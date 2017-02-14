@@ -25,6 +25,7 @@ static void cleanup(void) __attribute__((destructor));
 
 static void move_v(union arg *);
 static void move_h(union arg *);
+static void goto_dir(union arg *);
 static void quit(union arg *);
 
 /* global variables */
@@ -160,6 +161,8 @@ goto_dir(union arg *arg)
 	dirs[PosMid] = dir;
 	dirs[PosLeft] = dir_parent(dir);
 	dirs[PosRight] = dir_child(dir);
+
+	screenredraw();
 }
 
 void

@@ -51,9 +51,9 @@ on_resize(struct tb_event *ev)
 
 	for (acc = 0, i = PosLeft; i < PosRight; ++i, acc += width) {
 		width = wratios[i] * ev->w;
-		win_resize(&wins[i], acc, 0, width, ev->h - 1);
+		win_resize(&wins[i], acc, 0, width - 1, ev->h - 1);
 	}
-	win_resize(&wins[PosRight], acc, 0, ev->w - acc, ev->h - 1);
+	win_resize(&wins[PosRight], acc, 0, ev->w - acc - 1, ev->h - 1);
 }
 
 void

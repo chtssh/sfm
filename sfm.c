@@ -25,6 +25,7 @@ static void cleanup(void) __attribute__((destructor));
 
 static void move_v(union arg *);
 static void move_h(union arg *);
+static void goto_line(union arg *);
 static void goto_dir(union arg *);
 static void quit(union arg *);
 
@@ -162,6 +163,18 @@ goto_dir(union arg *arg)
 	dirs[PosLeft] = dir_parent(dir);
 	dirs[PosRight] = dir_child(dir);
 
+	screenredraw();
+}
+
+void
+goto_line(union arg *arg)
+{
+	prefix += arg->i;
+	if (prefix < dirs[PosMid]->fi.size)
+		dirs[PosMid]->cf = prefix;
+	else
+		dirs[PosMid]->cf = dirs[PosMid]->fi.size - 1;
+	dir_set_curline(&dirs[PosMid]->cl, dirs[PosMid]->cf);
 	screenredraw();
 }
 

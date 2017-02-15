@@ -10,16 +10,6 @@ win_resize(struct window *win, int x, int y, int w, int h)
 }
 
 void
-win_clear(struct window *win)
-{
-	int i, j;
-
-	for (i = win->xmin; i < win->xmax; ++i)
-		for (j = win->y; j < win->h; ++j)
-			tb_change_cell(i, j, ' ', 0, 0);
-}
-
-void
 wprint(struct window *win, int x, int y, int fg, int bg, const char *str)
 {
 	uint32_t uch;

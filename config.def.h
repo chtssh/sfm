@@ -17,5 +17,7 @@ static struct key keys[] = {
 	{ "gs",		goto_dir,	{.v = "/srv"} },
 	{ "gu",		goto_dir,	{.v = "/usr"} },
 	{ "gv",		goto_dir,	{.v = "/var"} },
+	{ "ob",		sort_files,	{.v = cmpfi_name} },
+	{ "os",		sort_files,	{.v = cmpfi_size} },
 	{ "q",		quit,		{0} },
 };

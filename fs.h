@@ -23,6 +23,7 @@ struct dir {
 	size_t plen;
 	size_t cf;
 	int cl;			/* current line: rw field for TUI */
+	int (*sort_func)(const void *, const void *);
 	char path[1];
 };
 
@@ -47,9 +48,13 @@ struct dir {
 
 void fs_init(void);
 void fs_clean(void);
+void fs_sortby(int (*)(const void *, const void *));
 struct dir * dir_get(const char *);
 struct dir * dir_cwd(void);
 struct dir * dir_parent(const struct dir *);
 struct dir * dir_child(const struct dir *);
+void dir_update(struct dir *);
+int cmpfi_name(const void *, const void *);
+int cmpfi_size(const void *, const void *);
 
 #endif /* FS_H */

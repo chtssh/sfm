@@ -22,10 +22,12 @@ static void fi_init(struct arr_fi *, const char *, size_t);
 static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
 static void dir_clean(struct dir *dir);
+static void fi_sort(struct arr_fi *);
 extern void dir_set_curline(int *, size_t);
 
 static char buffer[PATH_MAX + NAME_MAX];
 static struct htable htdir;
+static int (*cursort_func)(const void *, const void *) = cmpfi_name;
 
 void
 fs_init(void)
@@ -48,6 +50,12 @@ fs_clean(void)
 	ht_clean(&htdir);
 }
 
+void
+fs_sortby(int (*func)(const void *, const void *))
+{
+	cursort_func = func;
+}
+
 struct dir *
 _dir_get(const char *path, size_t plen)
 {
@@ -64,6 +72,7 @@ _dir_get(const char *path, size_t plen)
 		dir = HIKEY2DIR(ik);
 	}
 
+	dir_update(dir);
 	return dir;
 }
 
@@ -140,6 +149,26 @@ dir_child(const struct dir *dir)
 	return chi;
 }
 
+int
+cmpfi_name(const void *a, const void *b)
+{
+	return strcmp(((struct file *)a)->name, ((struct file *)b)->name);
+}
+
+int
+cmpfi_size(const void *a, const void *b)
+{
+	struct file *fa = (struct file *)a;
+	struct file *fb = (struct file *)b;
+
+	if (fa->st.st_size < fb->st.st_size)
+		return -1;
+	else if (fa->st.st_size > fb->st.st_size)
+		return 1;
+
+	return 0;
+}
+
 struct dir *
 dir_create(const char *path, size_t plen)
 {
@@ -150,15 +179,31 @@ dir_create(const char *path, size_t plen)
 	dir->plen = plen;
 	dir->cf = dir->cl = 0;
 	lstat(path, &dir->st);
+	dir->sort_func = cursort_func;
 	fi_init(&dir->fi, dir->path, dir->plen);
 
 	return dir;
 }
 
 void
+dir_update(struct dir *dir)
+{
+	if (dir->sort_func != cursort_func) {
+		fi_sort(&dir->fi);
+		dir->sort_func = cursort_func;
+	}
+}
+
+void
 dir_clean(struct dir *dir)
 {
 	fi_clean(&dir->fi);
+}
+
+void
+fi_sort(struct arr_fi *fi)
+{
+	qsort(fi->arr, fi->size, sizeof(struct file), cursort_func);
 }
 
 void
@@ -198,6 +243,7 @@ fi_init(struct arr_fi *fi, const char *path, size_t plen)
 		memcpy(buffer + plen, de->d_name, siz);
 		stat(buffer, &fi->arr[fi->size++].st);
 	}
+	fi_sort(fi);
 
 	closedir(ds);
 }

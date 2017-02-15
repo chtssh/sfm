@@ -27,6 +27,7 @@ static void move_v(union arg *);
 static void move_h(union arg *);
 static void goto_line(union arg *);
 static void goto_dir(union arg *);
+void sort_files(union arg *);
 static void quit(union arg *);
 
 /* global variables */
@@ -175,6 +176,19 @@ goto_line(union arg *arg)
 	else
 		dirs[PosMid]->cf = dirs[PosMid]->fi.size - 1;
 	dir_set_curline(&dirs[PosMid]->cl, dirs[PosMid]->cf);
+	screenredraw();
+}
+
+void
+sort_files(union arg *arg)
+{
+	int i;
+
+	fs_sortby((int (*)(const void *, const void *))arg->v);
+	for (i = PosLeft; i < PosLast; ++i) {
+		if (dirs[i] != NULL)
+			dir_update(dirs[i]);
+	}
 	screenredraw();
 }
 

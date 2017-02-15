@@ -10,6 +10,7 @@ enum { PosLeft, PosMid, PosRight, PosLast };
 
 union arg {
 	int i;
+	unsigned u;
 	void *v;
 };
 
@@ -184,7 +185,7 @@ sort_files(union arg *arg)
 {
 	int i;
 
-	fs_sortby((int (*)(const void *, const void *))arg->v);
+	fs_sortby(arg->u);
 	for (i = PosLeft; i < PosLast; ++i) {
 		if (dirs[i] != NULL)
 			dir_update(dirs[i]);

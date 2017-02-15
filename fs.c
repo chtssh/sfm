@@ -24,10 +24,12 @@ static struct dir * dir_create(const char *, size_t);
 static void dir_clean(struct dir *dir);
 static void fi_sort(struct arr_fi *);
 extern void dir_set_curline(int *, size_t);
+static int sortby_name(const void *, const void *);
+static int sortby_size(const void *, const void *);
 
 static char buffer[PATH_MAX + NAME_MAX];
 static struct htable htdir;
-static int (*cursort_func)(const void *, const void *) = cmpfi_name;
+static int (*cursort_func)(const void *, const void *) = sortby_size;
 
 void
 fs_init(void)
@@ -51,9 +53,16 @@ fs_clean(void)
 }
 
 void
-fs_sortby(int (*func)(const void *, const void *))
+fs_sortby(unsigned code)
 {
-	cursort_func = func;
+	switch (code) {
+	case FI_CMP_BYNAME:
+		cursort_func = sortby_name;
+		break;
+	case FI_CMP_BYSIZE:
+		cursort_func = sortby_size;
+		break;
+	}
 }
 
 struct dir *
@@ -150,13 +159,13 @@ dir_child(const struct dir *dir)
 }
 
 int
-cmpfi_name(const void *a, const void *b)
+sortby_name(const void *a, const void *b)
 {
 	return strcmp(((struct file *)a)->name, ((struct file *)b)->name);
 }
 
 int
-cmpfi_size(const void *a, const void *b)
+sortby_size(const void *a, const void *b)
 {
 	struct file *fa = (struct file *)a;
 	struct file *fb = (struct file *)b;

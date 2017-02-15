@@ -29,7 +29,7 @@ static int sortby_size(const void *, const void *);
 
 static char buffer[PATH_MAX + NAME_MAX];
 static struct htable htdir;
-static int (*cursort_func)(const void *, const void *) = sortby_size;
+static int (*cursort_func)(const void *, const void *) = sortby_name;
 
 void
 fs_init(void)

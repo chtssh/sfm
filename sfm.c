@@ -265,6 +265,7 @@ setup(void)
 
 	/* init fs */
 	fs_init();
+	fs_sortby(defsort);
 
 	dirs[PosMid] = dir_cwd();
 	dirs[PosLeft] = dir_parent(dirs[PosMid]);

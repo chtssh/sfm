@@ -1,4 +1,5 @@
 static const float wratios[] = {0.25, 0.35};
+static unsigned defsort = FI_CMP_BYNAME;
 
 static struct key keys[] = {
 	/* keys		function	argument */

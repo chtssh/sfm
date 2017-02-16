@@ -180,9 +180,9 @@ sortby_size(const void *a, const void *b)
 	struct file *fb = (struct file *)b;
 
 	if (fa->st.st_size < fb->st.st_size)
-		return -1;
-	else if (fa->st.st_size > fb->st.st_size)
 		return 1;
+	else if (fa->st.st_size > fb->st.st_size)
+		return -1;
 
 	return 0;
 }

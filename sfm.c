@@ -11,6 +11,7 @@ enum { PosLeft, PosMid, PosRight, PosLast };
 union arg {
 	int i;
 	unsigned u;
+	float f;
 	void *v;
 };
 
@@ -26,6 +27,7 @@ static void cleanup(void) __attribute__((destructor));
 
 static void move_v(union arg *);
 static void move_h(union arg *);
+void move_page(union arg *);
 static void goto_line(union arg *);
 static void goto_dir(union arg *);
 void sort_files(union arg *);
@@ -151,6 +153,15 @@ move_h(union arg *arg)
 
 	if (dirs[PosMid] != sd)
 		screenredraw();
+}
+
+void
+move_page(union arg *arg)
+{
+	union arg targ;
+
+	targ.i = (int)(wins[PosMid].h * arg->f);
+	move_v(&targ);
 }
 
 void

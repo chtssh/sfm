@@ -23,6 +23,7 @@ static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
 static void dir_clean(struct dir *dir);
 static void fi_sort(struct arr_fi *);
+static void dir_update_cf(struct dir *, struct stat *);
 extern void dir_set_curline(int *, size_t);
 static int sortby_name(const void *, const void *);
 static int sortby_size(const void *, const void *);
@@ -107,7 +108,6 @@ dir_parent(const struct dir *dir)
 {
 	struct dir *par;
 	size_t plen;
-	size_t i;
 	struct stat st;
 
 	if (IS_ROOT(dir->path))
@@ -121,17 +121,26 @@ dir_parent(const struct dir *dir)
 	else
 		st = dir->st;
 
-	if (!DIR_IS_FAIL(dir) && !CMP_FILE(par->fi.arr[par->fi.size].st, st)) {
-		for (i = 0; i < par->fi.size; ++i) {
-			if (CMP_FILE(par->fi.arr[i].st, st)) {
-				par->cf = i;
+	if (!DIR_IS_FAIL(dir))
+		dir_update_cf(par, &st);
+
+	return par;
+}
+
+void
+dir_update_cf(struct dir *dir, struct stat *st)
+{
+	size_t i;
+
+	if (!CMP_FILE(dir->fi.arr[dir->fi.size].st, *st)) {
+		for (i = 0; i < dir->fi.size; ++i) {
+			if (CMP_FILE(dir->fi.arr[i].st, *st)) {
+				dir->cf = i;
 				break;
 			}
 		}
-		dir_set_curline(&par->cl, par->cf);
+		dir_set_curline(&dir->cl, dir->cf);
 	}
-
-	return par;
 }
 
 struct dir *
@@ -197,9 +206,13 @@ dir_create(const char *path, size_t plen)
 void
 dir_update(struct dir *dir)
 {
-	if (dir->sort_func != cursort_func) {
-		fi_sort(&dir->fi);
+	struct stat st;
+
+	if (!DIR_IS_FAIL(dir) && dir->sort_func != cursort_func) {
 		dir->sort_func = cursort_func;
+		st = dir->fi.arr[dir->cf].st;
+		fi_sort(&dir->fi);
+		dir_update_cf(dir, &st);
 	}
 }
 

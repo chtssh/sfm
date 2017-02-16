@@ -37,7 +37,9 @@ static void quit(union arg *);
 static struct window wins[PosLast];
 static struct dir *dirs[PosLast];
 static int runner = 1;
-static int prefix;
+static size_t prefix;
+
+#define PREFIX_MULT(i)	(prefix > 0 ? prefix * (i) : (size_t)(i))
 
 #include "config.h"
 
@@ -112,12 +114,10 @@ move_v(union arg *arg)
 {
 	size_t scf = dirs[PosMid]->cf;
 
-	prefix = prefix > 0 ? prefix * arg->i : arg->i;
-
-	if (prefix > 0)
-		FILE_DOWN(dirs[PosMid], (size_t)prefix);
+	if (arg->i > 0)
+		FILE_DOWN(dirs[PosMid], PREFIX_MULT(arg->i));
 	else
-		FILE_UP(dirs[PosMid], (size_t)-prefix);
+		FILE_UP(dirs[PosMid], PREFIX_MULT(- arg->i));
 
 	if (dirs[PosMid]->cf != scf) {
 		dirs[PosMid]->cl += dirs[PosMid]->cf - scf;
@@ -135,21 +135,21 @@ move_h(union arg *arg)
 {
 	struct dir *sd = dirs[PosMid];
 
-	prefix = prefix > 0 ? prefix * arg->i : arg->i;
-
-	if (prefix > 0)
-		while (dirs[PosRight] != NULL && !DIR_IS_FAIL(dirs[PosRight])
-		       && prefix-- > 0) {
+	if (arg->i > 0) {
+		for (prefix = PREFIX_MULT(arg->i); dirs[PosRight] != NULL
+		     && !DIR_IS_FAIL(dirs[PosRight]) && prefix > 0; --prefix) {
 			dirs[PosLeft] = dirs[PosMid];
 			dirs[PosMid] = dirs[PosRight];
 			dirs[PosRight] = dir_child(dirs[PosMid]);
 		}
-	else
-		while (dirs[PosLeft] != NULL && prefix++ < 0) {
+	} else {
+		for (prefix = PREFIX_MULT(- arg->i); dirs[PosLeft] != NULL
+		     && prefix > 0; --prefix) {
 			dirs[PosRight] = dirs[PosMid];
 			dirs[PosMid] = dirs[PosLeft];
 			dirs[PosLeft] = dir_parent(dirs[PosMid]);
 		}
+	}
 
 	if (dirs[PosMid] != sd)
 		screenredraw();
@@ -182,7 +182,7 @@ goto_dir(union arg *arg)
 void
 goto_line(union arg *arg)
 {
-	prefix += arg->i;
+	prefix += arg->u;
 	if (prefix < dirs[PosMid]->fi.size)
 		dirs[PosMid]->cf = prefix;
 	else

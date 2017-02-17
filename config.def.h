@@ -1,5 +1,5 @@
 static const float wratios[] = {0.25, 0.35};
-static unsigned defsort = FI_CMP_BYNAME;
+static unsigned sort_code = FICMP_BYNAME;
 
 static struct key keys[] = {
 	/* keys		function	argument */
@@ -22,7 +22,7 @@ static struct key keys[] = {
 	{ "gs",		goto_dir,	{.v = "/srv"} },
 	{ "gu",		goto_dir,	{.v = "/usr"} },
 	{ "gv",		goto_dir,	{.v = "/var"} },
-	{ "ob",		sort_files,	{.u = FI_CMP_BYNAME} },
-	{ "os",		sort_files,	{.u = FI_CMP_BYSIZE} },
+	{ "ob",		sort_files,	{.u = FICMP_BYNAME} },
+	{ "os",		sort_files,	{.u = FICMP_BYSIZE} },
 	{ "q",		quit,		{0} },
 };

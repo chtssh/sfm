@@ -21,7 +21,7 @@ static void fi_clean(struct arr_fi *);
 static void fi_init(struct arr_fi *, const char *, size_t);
 static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
-static void dir_clean(struct dir *dir);
+static void dir_clean(struct dir *);
 static void fi_sort(struct arr_fi *);
 static void dir_update_cf(struct dir *, struct stat *);
 extern void dir_set_curline(int *, size_t);
@@ -30,7 +30,7 @@ static int sortby_size(const void *, const void *);
 
 static char buffer[PATH_MAX + NAME_MAX];
 static struct htable htdir;
-static int (*cursort_func)(const void *, const void *) = sortby_name;
+static int (*sort_func)(const void *, const void *) = sortby_name;
 
 void
 fs_init(void)
@@ -57,11 +57,11 @@ void
 fs_sortby(unsigned code)
 {
 	switch (code) {
-	case FI_CMP_BYNAME:
-		cursort_func = sortby_name;
+	case FICMP_BYNAME:
+		sort_func = sortby_name;
 		break;
-	case FI_CMP_BYSIZE:
-		cursort_func = sortby_size;
+	case FICMP_BYSIZE:
+		sort_func = sortby_size;
 		break;
 	}
 }
@@ -80,9 +80,9 @@ _dir_get(const char *path, size_t plen)
 		ht_insert(&htdir, hv, dir->path);
 	} else {
 		dir = HIKEY2DIR(ik);
+		dir_update_sort(dir);
 	}
 
-	dir_update(dir);
 	return dir;
 }
 
@@ -197,19 +197,19 @@ dir_create(const char *path, size_t plen)
 	dir->plen = plen;
 	dir->cf = dir->cl = 0;
 	lstat(path, &dir->st);
-	dir->sort_func = cursort_func;
+	dir->sort_func = sort_func;
 	fi_init(&dir->fi, dir->path, dir->plen);
 
 	return dir;
 }
 
 void
-dir_update(struct dir *dir)
+dir_update_sort(struct dir *dir)
 {
 	struct stat st;
 
-	if (!DIR_IS_FAIL(dir) && dir->sort_func != cursort_func) {
-		dir->sort_func = cursort_func;
+	if (!DIR_IS_FAIL(dir) && dir->sort_func != sort_func) {
+		dir->sort_func = sort_func;
 		st = dir->fi.arr[dir->cf].st;
 		fi_sort(&dir->fi);
 		dir_update_cf(dir, &st);
@@ -225,7 +225,7 @@ dir_clean(struct dir *dir)
 void
 fi_sort(struct arr_fi *fi)
 {
-	qsort(fi->arr, fi->size, sizeof(struct file), cursort_func);
+	qsort(fi->arr, fi->size, sizeof(struct file), sort_func);
 }
 
 void

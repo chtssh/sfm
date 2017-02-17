@@ -27,10 +27,10 @@ static void cleanup(void) __attribute__((destructor));
 
 static void move_v(union arg *);
 static void move_h(union arg *);
-void move_page(union arg *);
+static void move_page(union arg *);
 static void goto_line(union arg *);
 static void goto_dir(union arg *);
-void sort_files(union arg *);
+static void sort_files(union arg *);
 static void quit(union arg *);
 
 /* global variables */
@@ -158,10 +158,10 @@ move_h(union arg *arg)
 void
 move_page(union arg *arg)
 {
-	union arg targ;
+	union arg a;
 
-	targ.i = (int)(wins[PosMid].h * arg->f);
-	move_v(&targ);
+	a.i = (int)(wins[PosMid].h * arg->f);
+	move_v(&a);
 }
 
 void
@@ -197,10 +197,9 @@ sort_files(union arg *arg)
 	int i;
 
 	fs_sortby(arg->u);
-	for (i = PosLeft; i < PosLast; ++i) {
+	for (i = PosLeft; i < PosLast; ++i)
 		if (dirs[i] != NULL)
-			dir_update(dirs[i]);
-	}
+			dir_update_sort(dirs[i]);
 	screenredraw();
 }
 
@@ -276,7 +275,7 @@ setup(void)
 
 	/* init fs */
 	fs_init();
-	fs_sortby(defsort);
+	fs_sortby(sort_code);
 
 	dirs[PosMid] = dir_cwd();
 	dirs[PosLeft] = dir_parent(dirs[PosMid]);

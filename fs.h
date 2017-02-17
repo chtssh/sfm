@@ -46,9 +46,8 @@ struct dir {
 	} \
 } while (0)
 
-#define FI_CMP_BYNAME	0
-#define FI_CMP_BYSIZE	1
-#define FI_CMP_LAST	2
+#define FICMP_BYNAME	0
+#define FICMP_BYSIZE	1
 
 void fs_init(void);
 void fs_clean(void);
@@ -57,6 +56,6 @@ struct dir * dir_get(const char *);
 struct dir * dir_cwd(void);
 struct dir * dir_parent(const struct dir *);
 struct dir * dir_child(const struct dir *);
-void dir_update(struct dir *);
+void dir_update_sort(struct dir *);
 
 #endif /* FS_H */

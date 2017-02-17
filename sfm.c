@@ -43,7 +43,8 @@ static size_t prefix;
 
 #include "config.h"
 
-struct numratios { char check[LENGTH(wratios) < PosRight ? -1 : 1]; };
+/* TODO: Remove a fixed number of columns */
+struct numratios { char check[LENGTH(column_ratios) != PosLast ? -1 : 1]; };
 
 void
 dir_set_curline(int *cl, size_t cf)
@@ -56,9 +57,13 @@ on_resize(struct tb_event *ev)
 {
 	size_t i;
 	int acc, width;
+	unsigned sum;
 
-	for (acc = 0, i = PosLeft; i < PosRight; ++i, acc += width) {
-		width = wratios[i] * ev->w;
+	for (sum = i = 0; i < LENGTH(column_ratios); ++i)
+		sum += column_ratios[i];
+
+	for (acc = 0, i = 0; i < LENGTH(column_ratios) - 1; ++i, acc += width) {
+		width = (float)column_ratios[i] / sum * ev->w;
 		win_resize(&wins[i], acc, 0, width - 1, ev->h - 1);
 	}
 	win_resize(&wins[PosRight], acc, 0, ev->w - acc - 1, ev->h - 1);

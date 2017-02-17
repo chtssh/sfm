@@ -22,7 +22,6 @@ static void fi_init(struct arr_fi *, const char *, size_t);
 static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
 static void dir_clean(struct dir *);
-static void fi_sort(struct arr_fi *);
 static void dir_update_cf(struct dir *, struct stat *);
 extern void dir_set_curline(int *, size_t);
 static int sortby_name(const void *, const void *);
@@ -54,7 +53,7 @@ fs_clean(void)
 }
 
 void
-fs_sortby(unsigned code)
+fs_set_sort(unsigned code)
 {
 	switch (code) {
 	case FICMP_BYNAME:
@@ -80,8 +79,9 @@ _dir_get(const char *path, size_t plen)
 		ht_insert(&htdir, hv, dir->path);
 	} else {
 		dir = HIKEY2DIR(ik);
-		dir_update_sort(dir);
 	}
+
+	dir_sort(dir);
 
 	return dir;
 }
@@ -197,21 +197,21 @@ dir_create(const char *path, size_t plen)
 	dir->plen = plen;
 	dir->cf = dir->cl = 0;
 	lstat(path, &dir->st);
-	dir->sort_func = sort_func;
+	dir->sort_func = NULL;
 	fi_init(&dir->fi, dir->path, dir->plen);
 
 	return dir;
 }
 
 void
-dir_update_sort(struct dir *dir)
+dir_sort(struct dir *dir)
 {
 	struct stat st;
 
 	if (!DIR_IS_FAIL(dir) && dir->sort_func != sort_func) {
-		dir->sort_func = sort_func;
 		st = dir->fi.arr[dir->cf].st;
-		fi_sort(&dir->fi);
+		qsort(dir->fi.arr, dir->fi.size, sizeof(struct file), sort_func);
+		dir->sort_func = sort_func;
 		dir_update_cf(dir, &st);
 	}
 }
@@ -220,12 +220,6 @@ void
 dir_clean(struct dir *dir)
 {
 	fi_clean(&dir->fi);
-}
-
-void
-fi_sort(struct arr_fi *fi)
-{
-	qsort(fi->arr, fi->size, sizeof(struct file), sort_func);
 }
 
 void
@@ -265,7 +259,6 @@ fi_init(struct arr_fi *fi, const char *path, size_t plen)
 		memcpy(buffer + plen, de->d_name, siz);
 		stat(buffer, &fi->arr[fi->size++].st);
 	}
-	fi_sort(fi);
 
 	closedir(ds);
 }

@@ -196,10 +196,10 @@ sort_files(union arg *arg)
 {
 	int i;
 
-	fs_sortby(arg->u);
+	fs_set_sort(arg->u);
 	for (i = PosLeft; i < PosLast; ++i)
 		if (dirs[i] != NULL)
-			dir_update_sort(dirs[i]);
+			dir_sort(dirs[i]);
 	screenredraw();
 }
 
@@ -275,7 +275,7 @@ setup(void)
 
 	/* init fs */
 	fs_init();
-	fs_sortby(sort_code);
+	fs_set_sort(sort_code);
 
 	dirs[PosMid] = dir_cwd();
 	dirs[PosLeft] = dir_parent(dirs[PosMid]);

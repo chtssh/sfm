@@ -51,11 +51,11 @@ struct dir {
 
 void fs_init(void);
 void fs_clean(void);
-void fs_sortby(unsigned);
+void fs_set_sort(unsigned);
 struct dir * dir_get(const char *);
 struct dir * dir_cwd(void);
 struct dir * dir_parent(const struct dir *);
 struct dir * dir_child(const struct dir *);
-void dir_update_sort(struct dir *);
+void dir_sort(struct dir *);
 
 #endif /* FS_H */

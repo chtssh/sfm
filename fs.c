@@ -16,14 +16,16 @@
 #define CMP_FILE(a, b)	((a).st_ino == (b).st_ino && (a).st_dev == (b).st_dev)
 #define HIKEY2DIR(k)	((struct dir *)((k) - offsetof(struct dir, path)))
 
-static void fi_clean(struct arr_fi *);
-static void fi_init(struct arr_fi *, const char *, size_t);
 static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
 static void dir_clean(struct dir *);
 static void dir_update_cf(struct dir *, struct stat *);
 extern void dir_set_curline(int *, size_t);
+
+static void fi_init(struct arr_fi *, const char *, size_t);
 static void fi_sort(struct arr_fi *);
+static void fi_clean(struct arr_fi *);
+
 static int sortby_name(const void *, const void *);
 static int sortby_size(const void *, const void *);
 
@@ -130,15 +132,15 @@ dir_update_cf(struct dir *dir, struct stat *st)
 {
 	size_t i;
 
-	if (!CMP_FILE(dir->fi.arr[dir->fi.size].st, *st)) {
-		for (i = 0; i < dir->fi.size; ++i) {
-			if (CMP_FILE(dir->fi.arr[i].st, *st)) {
-				dir->cf = i;
-				break;
-			}
+	if (CMP_FILE(dir->fi.arr[dir->fi.size].st, *st))
+		return;
+
+	for (i = 0; i < dir->fi.size; ++i)
+		if (CMP_FILE(dir->fi.arr[i].st, *st)) {
+			dir->cf = i;
+			break;
 		}
-		dir_set_curline(&dir->cl, dir->cf);
-	}
+	dir_set_curline(&dir->cl, dir->cf);
 }
 
 struct dir *
@@ -212,12 +214,13 @@ dir_sort(struct dir *dir)
 {
 	struct stat st;
 
-	if (!DIR_IS_FAIL(dir) && dir->sort_func != sort_func) {
-		st = dir->fi.arr[dir->cf].st;
-		fi_sort(&dir->fi);
-		dir->sort_func = sort_func;
-		dir_update_cf(dir, &st);
-	}
+	if (DIR_IS_FAIL(dir) || dir->sort_func == sort_func)
+		return;
+
+	st = dir->fi.arr[dir->cf].st;
+	fi_sort(&dir->fi);
+	dir->sort_func = sort_func;
+	dir_update_cf(dir, &st);
 }
 
 void

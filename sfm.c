@@ -58,11 +58,23 @@ dir_set_curline(int *cl, size_t cf)
 	*cl = MIN(cf, (size_t)win_main.h);
 }
 
+int
+is_topdir_gt2col(void)
+{
+	return dirs[LENGTH(dirs) - 3] == NULL;
+}
+
+int
+is_topdir_eq2col(void)
+{
+	return dir_main->plen == 1;
+}
+
 void
 on_resize(struct tb_event *ev)
 {
 	size_t i;
-	int acc, width;
+	unsigned acc, width;
 	unsigned sum;
 
 	for (sum = i = 0; i < LENGTH(column_ratios); ++i)
@@ -139,18 +151,6 @@ move_v(union arg *arg)
 		dir_preview = dir_child(dir_main);
 		screenredraw();
 	}
-}
-
-int
-is_topdir_gt2col(void)
-{
-	return dirs[LENGTH(dirs) - 3] == NULL;
-}
-
-int
-is_topdir_eq2col(void)
-{
-	return dir_main->plen == 1;
 }
 
 void
@@ -302,7 +302,7 @@ setup(void)
 
 	/* init fs */
 	fs_init();
-	fs_set_sort(sort_code);
+	fs_set_sort(sort);
 
 	a.v = getcwd(buffer, PATH_MAX);
 	goto_dir(&a);

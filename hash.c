@@ -181,7 +181,7 @@ ht_debug_msg(FILE *stream)
 	fprintf(stream, "Hash table expands: %zu\n", hstat_expand);
 	fprintf(stream, "Hash table lookups: %zu\n", hstat_lookup);
 	fprintf(stream, "Hash table perturb loops: %zu\n", hstat_perturb);
-	fprintf(stream, "Percentage of perturb loops: %zu\n",
+	fprintf(stream, "Hash table percentage of perturb loops: %zu\n",
 		hstat_perturb * 100 / hstat_lookup);
 #else
 	(void)stream;

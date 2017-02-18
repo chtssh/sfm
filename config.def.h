@@ -1,5 +1,5 @@
 static const unsigned column_ratios[] = {2, 3, 3};
-static const unsigned sort_code = FICMP_BYNAME;
+static const unsigned sort = FICMP_BYNAME;
 
 static struct key keys[] = {
 	/* keys		function	argument */

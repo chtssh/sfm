@@ -23,6 +23,7 @@ static struct dir * dir_create(const char *, size_t);
 static void dir_clean(struct dir *);
 static void dir_update_cf(struct dir *, struct stat *);
 extern void dir_set_curline(int *, size_t);
+static void fi_sort(struct arr_fi *);
 static int sortby_name(const void *, const void *);
 static int sortby_size(const void *, const void *);
 
@@ -75,11 +76,10 @@ _dir_get(const char *path, size_t plen)
 		if ((dir = dir_create(path, plen)) == NULL)
 			return dir;
 		ht_insert(&htdir, hv, dir->path);
+		dir_sort(dir);
 	} else {
 		dir = HIKEY2DIR(ik);
 	}
-
-	dir_sort(dir);
 
 	return dir;
 }
@@ -195,10 +195,16 @@ dir_create(const char *path, size_t plen)
 	dir->plen = plen;
 	dir->cf = dir->cl = 0;
 	lstat(path, &dir->st);
-	dir->sort_func = NULL;
+	dir->sort_func = sort_func;
 	fi_init(&dir->fi, dir->path, dir->plen);
 
 	return dir;
+}
+
+void
+fi_sort(struct arr_fi *fi)
+{
+	qsort(fi->arr, fi->size, sizeof(struct file), sort_func);
 }
 
 void
@@ -208,7 +214,7 @@ dir_sort(struct dir *dir)
 
 	if (!DIR_IS_FAIL(dir) && dir->sort_func != sort_func) {
 		st = dir->fi.arr[dir->cf].st;
-		qsort(dir->fi.arr, dir->fi.size, sizeof(struct file), sort_func);
+		fi_sort(&dir->fi);
 		dir->sort_func = sort_func;
 		dir_update_cf(dir, &st);
 	}
@@ -257,6 +263,7 @@ fi_init(struct arr_fi *fi, const char *path, size_t plen)
 		memcpy(buffer + plen, de->d_name, siz);
 		stat(buffer, &fi->arr[fi->size++].st);
 	}
+	fi_sort(fi);
 
 	closedir(ds);
 }

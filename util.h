@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #define MAX(a, b)	(((a) > (b)) ? (a) : (b))
 #define MIN(a, b)	(((a) < (b)) ? (a) : (b))
@@ -15,5 +16,7 @@ void *sfm_realloc(void *ptr, size_t size);
 char *sfm_strdup(const char *str);
 char *sfm_strndup(const char *str, size_t siz);
 size_t sfm_dirname(char *dst, const char *src, size_t siz);
+
+extern char buffer[PATH_MAX + NAME_MAX];
 
 #endif /* UTIL_H */

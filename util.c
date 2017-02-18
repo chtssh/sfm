@@ -3,6 +3,8 @@
 
 #include "util.h"
 
+char buffer[PATH_MAX + NAME_MAX];
+
 void
 die(const char *fmt, ...)
 {

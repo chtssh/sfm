@@ -1,12 +1,11 @@
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "util.h"
 #include "hash.h"
 #include "ui.h"
 #include "fs.h"
-
-enum { PosLeft, PosMid, PosRight, PosLast };
 
 union arg {
 	int i;
@@ -33,9 +32,9 @@ static void goto_dir(union arg *);
 static void sort_files(union arg *);
 static void quit(union arg *);
 
-/* global variables */
-static struct window wins[PosLast];
-static struct dir *dirs[PosLast];
+static int is_topdir_gt2col(void);
+static int is_topdir_eq2col(void);
+
 static int runner = 1;
 static size_t prefix;
 
@@ -43,13 +42,20 @@ static size_t prefix;
 
 #include "config.h"
 
-/* TODO: Remove a fixed number of columns */
-struct numratios { char check[LENGTH(column_ratios) != PosLast ? -1 : 1]; };
+static struct window wins[LENGTH(column_ratios)];
+static struct dir *dirs[LENGTH(column_ratios)];
+#define dir_main	(dirs[LENGTH(dirs) - 2])
+#define win_main	(wins[LENGTH(wins) - 2])
+#define dir_preview	(dirs[LENGTH(dirs) - 1])
+#define win_preview	(wins[LENGTH(wins) - 1])
+
+static int (*is_topdir)(void) = LENGTH(dirs) > 2 ? is_topdir_gt2col : is_topdir_eq2col;
+struct numratios { char check[LENGTH(column_ratios) < 2 ? -1 : 1]; };
 
 void
 dir_set_curline(int *cl, size_t cf)
 {
-	*cl = MIN(cf, (size_t)wins[PosLeft].h);
+	*cl = MIN(cf, (size_t)win_main.h);
 }
 
 void
@@ -66,7 +72,7 @@ on_resize(struct tb_event *ev)
 		width = (float)column_ratios[i] / sum * ev->w;
 		win_resize(&wins[i], acc, 0, width - 1, ev->h - 1);
 	}
-	win_resize(&wins[PosRight], acc, 0, ev->w - acc - 1, ev->h - 1);
+	win_resize(&win_preview, acc, 0, ev->w - acc - 1, ev->h - 1);
 }
 
 void
@@ -104,11 +110,11 @@ wprintdir(struct window *win, struct dir *dir)
 void
 screenredraw(void)
 {
-	int i;
+	size_t i;
 
 	tb_clear();
 
-	for (i = PosLeft; i < PosLast; ++i)
+	for (i = 0; i < LENGTH(wins); ++i)
 		wprintdir(&wins[i], dirs[i]);
 
 	tb_present();
@@ -117,46 +123,59 @@ screenredraw(void)
 void
 move_v(union arg *arg)
 {
-	size_t scf = dirs[PosMid]->cf;
+	size_t scf = dir_main->cf;
 
 	if (arg->i > 0)
-		FILE_DOWN(dirs[PosMid], PREFIX_MULT(arg->i));
+		FILE_DOWN(dir_main, PREFIX_MULT(arg->i));
 	else
-		FILE_UP(dirs[PosMid], PREFIX_MULT(- arg->i));
+		FILE_UP(dir_main, PREFIX_MULT(- arg->i));
 
-	if (dirs[PosMid]->cf != scf) {
-		dirs[PosMid]->cl += dirs[PosMid]->cf - scf;
-		if (dirs[PosMid]->cl > wins[PosLeft].h)
-			dirs[PosMid]->cl = wins[PosMid].h;
-		else if (dirs[PosMid]->cl < 0)
-			dirs[PosMid]->cl = 0;
-		dirs[PosRight] = dir_child(dirs[PosMid]);
+	if (dir_main->cf != scf) {
+		dir_main->cl += dir_main->cf - scf;
+		if (dir_main->cl > win_main.h)
+			dir_main->cl = win_main.h;
+		else if (dir_main->cl < 0)
+			dir_main->cl = 0;
+		dir_preview = dir_child(dir_main);
 		screenredraw();
 	}
+}
+
+int
+is_topdir_gt2col(void)
+{
+	return dirs[LENGTH(dirs) - 3] == NULL;
+}
+
+int
+is_topdir_eq2col(void)
+{
+	return dir_main->plen == 1;
 }
 
 void
 move_h(union arg *arg)
 {
-	struct dir *sd = dirs[PosMid];
+	struct dir *sd = dir_main;
+	size_t i;
 
 	if (arg->i > 0) {
-		for (prefix = PREFIX_MULT(arg->i); dirs[PosRight] != NULL
-		     && !DIR_IS_FAIL(dirs[PosRight]) && prefix > 0; --prefix) {
-			dirs[PosLeft] = dirs[PosMid];
-			dirs[PosMid] = dirs[PosRight];
-			dirs[PosRight] = dir_child(dirs[PosMid]);
+		for (prefix = PREFIX_MULT(arg->i); dir_preview != NULL
+		     && !DIR_IS_FAIL(dir_preview) && prefix > 0; --prefix) {
+			for (i = 0; i < LENGTH(dirs) - 1; ++i)
+				dirs[i] = dirs[i + 1];
+			dir_preview = dir_child(dir_main);
 		}
 	} else {
-		for (prefix = PREFIX_MULT(- arg->i); dirs[PosLeft] != NULL
+		for (prefix = PREFIX_MULT(- arg->i); !is_topdir()
 		     && prefix > 0; --prefix) {
-			dirs[PosRight] = dirs[PosMid];
-			dirs[PosMid] = dirs[PosLeft];
-			dirs[PosLeft] = dir_parent(dirs[PosMid]);
+			for (i = LENGTH(dirs) - 1; i > 0; --i)
+				dirs[i] = dirs[i - 1];
+			dirs[0] = dir_parent(dirs[1]);
 		}
 	}
 
-	if (dirs[PosMid] != sd)
+	if (dir_main != sd)
 		screenredraw();
 }
 
@@ -165,7 +184,7 @@ move_page(union arg *arg)
 {
 	union arg a;
 
-	a.i = (int)(wins[PosMid].h * arg->f);
+	a.i = (int)(win_main.h * arg->f);
 	move_v(&a);
 }
 
@@ -173,13 +192,15 @@ void
 goto_dir(union arg *arg)
 {
 	struct dir *dir;
+	size_t i;
 
 	if ((dir = dir_get(arg->v)) == NULL)
 		return;
 
-	dirs[PosMid] = dir;
-	dirs[PosLeft] = dir_parent(dir);
-	dirs[PosRight] = dir_child(dir);
+	dir_main = dir;
+	dir_preview  = dir_child(dir_main);
+	for  (i = LENGTH(dirs) - 2; i-- != 0; )
+		dirs[i] = dir_parent(dirs[i + 1]);
 
 	screenredraw();
 }
@@ -188,21 +209,21 @@ void
 goto_line(union arg *arg)
 {
 	prefix += arg->u;
-	if (prefix < dirs[PosMid]->fi.size)
-		dirs[PosMid]->cf = prefix;
+	if (prefix < dir_main->fi.size)
+		dir_main->cf = prefix;
 	else
-		dirs[PosMid]->cf = dirs[PosMid]->fi.size - 1;
-	dir_set_curline(&dirs[PosMid]->cl, dirs[PosMid]->cf);
+		dir_main->cf = dir_main->fi.size - 1;
+	dir_set_curline(&dir_main->cl, dir_main->cf);
 	screenredraw();
 }
 
 void
 sort_files(union arg *arg)
 {
-	int i;
+	size_t i;
 
 	fs_set_sort(arg->u);
-	for (i = PosLeft; i < PosLast; ++i)
+	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_sort(dirs[i]);
 	screenredraw();
@@ -260,6 +281,7 @@ void
 setup(void)
 {
 	struct tb_event ev;
+	union arg a;
 
 	/* init ui */
 	switch (tb_init()) {
@@ -282,9 +304,8 @@ setup(void)
 	fs_init();
 	fs_set_sort(sort_code);
 
-	dirs[PosMid] = dir_cwd();
-	dirs[PosLeft] = dir_parent(dirs[PosMid]);
-	dirs[PosRight] = dir_child(dirs[PosMid]);
+	a.v = getcwd(buffer, PATH_MAX);
+	goto_dir(&a);
 }
 
 void
@@ -292,7 +313,6 @@ run(void)
 {
 	struct tb_event ev;
 
-	screenredraw();
 	while(runner && tb_poll_event(&ev) > 0)
 		switch(ev.type) {
 		case TB_EVENT_KEY:

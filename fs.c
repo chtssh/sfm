@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <stddef.h>
 #include <errno.h>
-#include <limits.h>
 
 #include "util.h"
 #include "fs.h"
@@ -27,7 +26,6 @@ extern void dir_set_curline(int *, size_t);
 static int sortby_name(const void *, const void *);
 static int sortby_size(const void *, const void *);
 
-static char buffer[PATH_MAX + NAME_MAX];
 static struct htable htdir;
 static int (*sort_func)(const void *, const void *) = sortby_name;
 
@@ -110,7 +108,7 @@ dir_parent(const struct dir *dir)
 	size_t plen;
 	struct stat st;
 
-	if (IS_ROOT(dir->path))
+	if (dir == NULL || IS_ROOT(dir->path))
 		return NULL;
 
 	plen = sfm_dirname(buffer, dir->path, dir->plen);

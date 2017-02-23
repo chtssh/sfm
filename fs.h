@@ -8,18 +8,14 @@ struct file {
 	char *name;
 };
 
-struct arr_fi {
-	struct file *arr;
+struct dir {
+	struct stat st;
+	struct file *fi;
 	size_t size;
 	union {
 		size_t cap;
 		int err;
 	} u;
-};
-
-struct dir {
-	struct stat st;
-	struct arr_fi fi;
 	size_t plen;
 	size_t cf;
 	int cl;			/* current line: rw field for TUI */
@@ -27,9 +23,9 @@ struct dir {
 	char path[1];
 };
 
-#define DIR_IS_FAIL(d)	((d)->fi.arr == NULL)
-#define DIR_IS_EMPTY(d)	((d)->fi.size == 0)
-#define DIR_ERROR(d)	((d)->fi.u.err)
+#define DIR_IS_FAIL(d)	((d)->fi == NULL)
+#define DIR_IS_EMPTY(d)	((d)->size == 0)
+#define DIR_ERROR(d)	((d)->u.err)
 
 #define FILE_UP(d, s) do { \
 	(d)->cf = (d)->cf < (s) ? 0 : (d)->cf - (s); \
@@ -37,11 +33,11 @@ struct dir {
 
 #define FILE_DOWN(d, s) do { \
 	if (SIZE_MAX - (d)->cf < (s)) { \
-		(d)->cf = (d)->fi.size - 1; \
+		(d)->cf = (d)->size - 1; \
 	} else { \
 		(d)->cf += (s); \
-		if ((d)->cf >= (d)->fi.size) { \
-			(d)->cf = (d)->fi.size - 1; \
+		if ((d)->cf >= (d)->size) { \
+			(d)->cf = (d)->size - 1; \
 		} \
 	} \
 } while (0)
@@ -56,6 +52,6 @@ struct dir * dir_get(const char *);
 struct dir * dir_cwd(void);
 struct dir * dir_parent(const struct dir *);
 struct dir * dir_child(const struct dir *);
-void dir_sort(struct dir *);
+void dir_resort(struct dir *);
 
 #endif /* FS_H */

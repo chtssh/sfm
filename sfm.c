@@ -114,9 +114,9 @@ wprintdir(struct window *win, struct dir *dir)
 		return;
 	}
 
-	for (i = dir->cf - dir->cl, y = 0; y <= win->h && i < dir->fi.size; ++y, ++i)
-		wprint(win, 1, y, 0, 0, dir->fi.arr[i].name);
-	wprint(win, 1, dir->cl, 0, TB_REVERSE, dir->fi.arr[dir->cf].name);
+	for (i = dir->cf - dir->cl, y = 0; y <= win->h && i < dir->size; ++y, ++i)
+		wprint(win, 1, y, 0, 0, dir->fi[i].name);
+	wprint(win, 1, dir->cl, 0, TB_REVERSE, dir->fi[dir->cf].name);
 }
 
 void
@@ -209,10 +209,10 @@ void
 goto_line(union arg *arg)
 {
 	prefix += arg->u;
-	if (prefix < dir_main->fi.size)
+	if (prefix < dir_main->size)
 		dir_main->cf = prefix;
 	else
-		dir_main->cf = dir_main->fi.size - 1;
+		dir_main->cf = dir_main->size - 1;
 	dir_set_curline(&dir_main->cl, dir_main->cf);
 	screenredraw();
 }
@@ -225,7 +225,7 @@ sort_files(union arg *arg)
 	fs_set_sort(arg->u);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
-			dir_sort(dirs[i]);
+			dir_resort(dirs[i]);
 	screenredraw();
 }
 

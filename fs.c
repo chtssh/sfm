@@ -24,12 +24,14 @@ extern void dir_set_curline(int *, size_t);
 
 static void dir_loadfiles(struct dir *);
 static void dir_sort(struct dir *);
+static void dir_filter(struct dir *);
 
 static int sortby_name(const void *, const void *);
 static int sortby_size(const void *, const void *);
 
 static struct htable htdir;
 static int (*sort_func)(const void *, const void *) = sortby_name;
+static unsigned show_hidden = 0;
 
 void
 fs_init(void)
@@ -64,6 +66,12 @@ fs_set_sort(unsigned code)
 	}
 }
 
+void
+fs_toggle_showhid(void)
+{
+	show_hidden = (show_hidden == 0) ? 1 : 0;
+}
+
 struct dir *
 _dir_get(const char *path, size_t plen)
 {
@@ -79,6 +87,7 @@ _dir_get(const char *path, size_t plen)
 	} else {
 		dir = HIKEY2DIR(ik);
 		dir_resort(dir);
+		dir_refilter(dir);
 	}
 
 	return dir;
@@ -130,14 +139,15 @@ dir_update_cf(struct dir *dir, struct stat *st)
 {
 	size_t i;
 
-	if (CMP_FILE(dir->fi[dir->size].st, *st))
+	if (dir->cf < dir->size && CMP_FILE(dir->fi[dir->cf]->st, *st))
 		return;
 
-	for (i = 0; i < dir->size; ++i)
-		if (CMP_FILE(dir->fi[i].st, *st)) {
+	for (dir->cf = i = 0; i < dir->size; ++i) {
+		if (CMP_FILE(dir->fi[i]->st, *st)) {
 			dir->cf = i;
 			break;
 		}
+	}
 	dir_set_curline(&dir->cl, dir->cf);
 }
 
@@ -147,17 +157,17 @@ dir_child(const struct dir *dir)
 	struct dir *chi;
 	size_t siz;
 
-	if (DIR_IS_FAIL(dir) || !S_ISDIR(dir->fi[dir->cf].st.st_mode))
+	if (DIR_IS_FAIL(dir) || !S_ISDIR(dir->fi[dir->cf]->st.st_mode))
 		return NULL;
 
-	siz = strlen(dir->fi[dir->cf].name);
+	siz = strlen(dir->fi[dir->cf]->name);
 	if (IS_ROOT(dir->path)) {
 		buffer[0] = '/';
-		memcpy(buffer + 1, dir->fi[dir->cf].name, siz + 1);
+		memcpy(buffer + 1, dir->fi[dir->cf]->name, siz + 1);
 	} else {
 		memcpy(buffer, dir->path, dir->plen);
 		buffer[dir->plen] = '/';
-		memcpy(buffer + dir->plen + 1, dir->fi[dir->cf].name, ++siz);
+		memcpy(buffer + dir->plen + 1, dir->fi[dir->cf]->name, ++siz);
 	}
 
 	chi = _dir_get(buffer, dir->plen + siz);
@@ -195,6 +205,7 @@ dir_create(const char *path, size_t plen)
 	dir->plen = plen;
 	dir->cf = dir->cl = 0;
 	lstat(path, &dir->st);
+
 	dir_loadfiles(dir);
 
 	return dir;
@@ -203,7 +214,7 @@ dir_create(const char *path, size_t plen)
 void
 dir_sort(struct dir *dir)
 {
-	qsort(dir->fi, dir->size, sizeof(struct file), sort_func);
+	qsort(dir->fi_all, dir->size_all, sizeof(struct file), sort_func);
 	dir->sort_func = sort_func;
 }
 
@@ -215,8 +226,46 @@ dir_resort(struct dir *dir)
 	if (DIR_IS_FAIL(dir) || dir->sort_func == sort_func)
 		return;
 
-	st = dir->fi[dir->cf].st;
+	st = dir->fi[dir->cf]->st;
+
 	dir_sort(dir);
+	dir_filter(dir);
+
+	dir_update_cf(dir, &st);
+}
+
+void
+dir_filter(struct dir *dir)
+{
+	size_t i;
+
+	/* TODO: implement custom filters. */
+
+	if (show_hidden == 0) {
+		for (dir->size = i = 0; i < dir->size_all; ++i)
+			if (dir->fi_all[i].name[0] != '.')
+				dir->fi[dir->size++] = &dir->fi_all[i];
+		dir->showhid = 0;
+	} else {
+		for (i = 0; i < dir->size_all; ++i)
+			dir->fi[i] = &dir->fi_all[i];
+		dir->size = dir->size_all;
+		dir->showhid = 1;
+	}
+}
+
+void
+dir_refilter(struct dir *dir)
+{
+	struct stat st;
+
+	if (DIR_IS_FAIL(dir) || show_hidden == dir->showhid)
+		return;
+
+	st = dir->fi[dir->cf]->st;
+
+	dir_filter(dir);
+
 	dir_update_cf(dir, &st);
 }
 
@@ -227,15 +276,17 @@ dir_loadfiles(struct dir *dir)
 	struct dirent *de;
 	size_t siz;
 
-	dir->size = 0;
+	dir->size_all = 0;
 
 	if ((ds = opendir(dir->path)) == NULL) {
+		dir->fi_all = NULL;
 		dir->fi = NULL;
+		dir->size = 0;
 		dir->u.err = errno;
 		return;
 	}
 
-	dir->fi = sfm_malloc(FI_INIT_SIZE * sizeof(struct file));
+	dir->fi_all = sfm_malloc(FI_INIT_SIZE * sizeof(struct file));
 	dir->u.cap = FI_INIT_SIZE;
 
 	memcpy(buffer, dir->path, dir->plen);
@@ -245,21 +296,26 @@ dir_loadfiles(struct dir *dir)
 		if (IS_DOT(de->d_name))
 			continue;
 
-		if (dir->size == dir->u.cap) {
+		if (dir->size_all == dir->u.cap) {
 			dir->u.cap *= 2;
-			dir->fi = sfm_realloc(dir->fi, dir->u.cap *
+			dir->fi_all = sfm_realloc(dir->fi_all, dir->u.cap *
 						  sizeof(struct file));
 		}
 
 		siz = strlen(de->d_name) + 1;
-		dir->fi[dir->size].name = sfm_strndup(de->d_name, siz);
+		dir->fi_all[dir->size_all].name = sfm_strndup(de->d_name, siz);
 
 		memcpy(buffer + dir->plen + 1, de->d_name, siz);
-		stat(buffer, &dir->fi[dir->size++].st);
+		stat(buffer, &dir->fi_all[dir->size_all++].st);
 	}
-	dir_sort(dir);
 
 	closedir(ds);
+
+	dir_sort(dir);
+
+	dir->showhid = show_hidden;
+	dir->fi = sfm_malloc(dir->size_all * sizeof(struct file *));
+	dir_filter(dir);
 }
 
 void
@@ -267,8 +323,9 @@ dir_free(struct dir *dir)
 {
 	size_t i;
 
-	for (i = 0; i < dir->size; ++i)
-		free(dir->fi[i].name);
+	for (i = 0; i < dir->size_all; ++i)
+		free(dir->fi_all[i].name);
+	free(dir->fi_all);
 	free(dir->fi);
 	free(dir);
 }

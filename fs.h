@@ -10,7 +10,9 @@ struct file {
 
 struct dir {
 	struct stat st;
-	struct file *fi;
+	struct file *fi_all;
+	struct file **fi;
+	size_t size_all;
 	size_t size;
 	union {
 		size_t cap;
@@ -20,6 +22,7 @@ struct dir {
 	size_t cf;
 	int cl;			/* current line: rw field for TUI */
 	int (*sort_func)(const void *, const void *);
+	unsigned showhid;
 	char path[1];
 };
 
@@ -48,10 +51,12 @@ struct dir {
 void fs_init(void);
 void fs_clean(void);
 void fs_set_sort(unsigned);
+void fs_toggle_showhid(void);
 struct dir * dir_get(const char *);
 struct dir * dir_cwd(void);
 struct dir * dir_parent(const struct dir *);
 struct dir * dir_child(const struct dir *);
 void dir_resort(struct dir *);
+void dir_refilter(struct dir *);
 
 #endif /* FS_H */

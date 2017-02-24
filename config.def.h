@@ -22,6 +22,7 @@ static struct key keys[] = {
 	{ "gs",		goto_dir,	{.v = "/srv"} },
 	{ "gu",		goto_dir,	{.v = "/usr"} },
 	{ "gv",		goto_dir,	{.v = "/var"} },
+	{ "\x08",	show_hidden_t,	{0} },
 	{ "ob",		sort_files,	{.u = FICMP_BYNAME} },
 	{ "os",		sort_files,	{.u = FICMP_BYSIZE} },
 	{ "q",		quit,		{0} },

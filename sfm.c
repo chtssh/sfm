@@ -30,6 +30,7 @@ static void move_page(union arg *);
 static void goto_line(union arg *);
 static void goto_dir(union arg *);
 static void sort_files(union arg *);
+void show_hidden_t(union arg *arg);
 static void quit(union arg *);
 
 static int is_topdir_gt2col(void);
@@ -115,8 +116,8 @@ wprintdir(struct window *win, struct dir *dir)
 	}
 
 	for (i = dir->cf - dir->cl, y = 0; y <= win->h && i < dir->size; ++y, ++i)
-		wprint(win, 1, y, 0, 0, dir->fi[i].name);
-	wprint(win, 1, dir->cl, 0, TB_REVERSE, dir->fi[dir->cf].name);
+		wprint(win, 1, y, 0, 0, dir->fi[i]->name);
+	wprint(win, 1, dir->cl, 0, TB_REVERSE, dir->fi[dir->cf]->name);
 }
 
 void
@@ -226,6 +227,19 @@ sort_files(union arg *arg)
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_resort(dirs[i]);
+	screenredraw();
+}
+
+void
+show_hidden_t(union arg *arg)
+{
+	size_t i;
+
+	(void)arg;
+	fs_toggle_showhid();
+	for (i = 0; i < LENGTH(dirs); ++i)
+		if (dirs[i] != NULL)
+			dir_refilter(dirs[i]);
 	screenredraw();
 }
 

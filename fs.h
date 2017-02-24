@@ -40,7 +40,7 @@ struct dir {
 	} else { \
 		(d)->cf += (s); \
 		if ((d)->cf >= (d)->size) { \
-			(d)->cf = (d)->size - 1; \
+			(d)->cf = (DIR_IS_EMPTY((d))) ? 0 : (d)->size - 1; \
 		} \
 	} \
 } while (0)

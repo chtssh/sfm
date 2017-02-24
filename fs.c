@@ -67,6 +67,12 @@ fs_set_sort(unsigned code)
 }
 
 void
+fs_set_showhid(unsigned showhid)
+{
+	show_hidden = (showhid > 0) ? 1 : 0;
+}
+
+void
 fs_toggle_showhid(void)
 {
 	show_hidden = (show_hidden == 0) ? 1 : 0;

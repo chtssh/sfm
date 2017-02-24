@@ -317,6 +317,7 @@ setup(void)
 	/* init fs */
 	fs_init();
 	fs_set_sort(sort);
+	fs_set_showhid(show_hidden);
 
 	a.v = getcwd(buffer, PATH_MAX);
 	goto_dir(&a);

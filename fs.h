@@ -51,6 +51,7 @@ struct dir {
 void fs_init(void);
 void fs_clean(void);
 void fs_set_sort(unsigned);
+void fs_set_showhid(unsigned);
 void fs_toggle_showhid(void);
 struct dir * dir_get(const char *);
 struct dir * dir_cwd(void);

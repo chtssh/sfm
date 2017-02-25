@@ -45,8 +45,8 @@ struct dir {
 	} \
 } while (0)
 
-#define FICMP_BYNAME	0
-#define FICMP_BYSIZE	1
+#define SORTBY_NAME	0
+#define SORTBY_SIZE	1
 
 void fs_init(void);
 void fs_clean(void);
@@ -54,7 +54,6 @@ void fs_set_sort(unsigned);
 void fs_set_showhid(unsigned);
 void fs_toggle_showhid(void);
 struct dir * dir_get(const char *);
-struct dir * dir_cwd(void);
 struct dir * dir_parent(const struct dir *);
 struct dir * dir_child(const struct dir *);
 void dir_resort(struct dir *);

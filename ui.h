@@ -10,7 +10,7 @@ struct window {
 	int h;
 };
 
-void win_resize(struct window *win, int x, int y, int w, int h);
-void wprint(struct window *win, int x, int y, int fg, int bg, const char *str);
+void win_resize(struct window *, int, int, int, int);
+void wprint(struct window *, int, int, int, int, const char *);
 
 #endif /* UI_H */

@@ -9,13 +9,13 @@
 #define MIN(a, b)	(((a) < (b)) ? (a) : (b))
 #define LENGTH(X)	(sizeof X / sizeof X[0])
 
-void die(const char *fmt, ...) __attribute__((format(printf, 1, 2), noreturn));
-void *sfm_malloc(size_t size) __attribute__((malloc));
-void *sfm_calloc(size_t nmemb, size_t size) __attribute__((malloc));
-void *sfm_realloc(void *ptr, size_t size);
-char *sfm_strdup(const char *str);
-char *sfm_strndup(const char *str, size_t siz);
-size_t sfm_dirname(char *dst, const char *src, size_t siz);
+void die(const char *, ...) __attribute__((format(printf, 1, 2), noreturn));
+void *sfm_malloc(size_t) __attribute__((malloc));
+void *sfm_calloc(size_t, size_t) __attribute__((malloc));
+void *sfm_realloc(void *, size_t);
+char *sfm_strdup(const char *);
+char *sfm_strndup(const char *, size_t);
+size_t sfm_dirname(char *, const char *, size_t);
 
 extern char buffer[PATH_MAX + NAME_MAX];
 

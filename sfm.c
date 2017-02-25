@@ -30,7 +30,7 @@ static void move_page(union arg *);
 static void goto_line(union arg *);
 static void goto_dir(union arg *);
 static void sort_files(union arg *);
-void show_hidden_t(union arg *arg);
+static void show_hidden_t(union arg *);
 static void quit(union arg *);
 
 static int is_topdir_gt2col(void);
@@ -43,15 +43,16 @@ static size_t prefix;
 
 #include "config.h"
 
+struct numratios { char check[LENGTH(column_ratios) < 2 ? -1 : 1]; };
+static int (*is_topdir)(void) = (LENGTH(column_ratios) == 2)
+	? is_topdir_eq2col : is_topdir_gt2col;
+
 static struct window wins[LENGTH(column_ratios)];
 static struct dir *dirs[LENGTH(column_ratios)];
 #define dir_main	(dirs[LENGTH(dirs) - 2])
 #define win_main	(wins[LENGTH(wins) - 2])
 #define dir_preview	(dirs[LENGTH(dirs) - 1])
 #define win_preview	(wins[LENGTH(wins) - 1])
-
-static int (*is_topdir)(void) = LENGTH(dirs) > 2 ? is_topdir_gt2col : is_topdir_eq2col;
-struct numratios { char check[LENGTH(column_ratios) < 2 ? -1 : 1]; };
 
 void
 dir_set_curline(int *cl, size_t cf)

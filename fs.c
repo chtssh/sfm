@@ -57,10 +57,10 @@ void
 fs_set_sort(unsigned code)
 {
 	switch (code) {
-	case FICMP_BYNAME:
+	case SORTBY_NAME:
 		sort_func = sortby_name;
 		break;
-	case FICMP_BYSIZE:
+	case SORTBY_SIZE:
 		sort_func = sortby_size;
 		break;
 	}
@@ -103,17 +103,6 @@ struct dir *
 dir_get(const char *path)
 {
 	return _dir_get(path, strlen(path));
-}
-
-struct dir *
-dir_cwd(void)
-{
-	struct dir *dir;
-
-	getcwd(buffer, PATH_MAX);
-	dir = dir_get(buffer);
-
-	return dir;
 }
 
 struct dir *

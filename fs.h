@@ -22,6 +22,7 @@ struct dir {
 	size_t cf;
 	int cl;			/* current line: rw field for TUI */
 	int (*sort_func)(const void *, const void *);
+	unsigned sort_flags;
 	unsigned showhid;
 	char path[1];
 };
@@ -50,7 +51,11 @@ struct dir {
 
 void fs_init(void);
 void fs_clean(void);
+
 void fs_set_sort(unsigned);
+void fs_set_caseins(unsigned);
+void fs_toggle_caseins(void);
+
 void fs_set_showhid(unsigned);
 void fs_toggle_showhid(void);
 struct dir * dir_get(const char *);

@@ -1,5 +1,6 @@
 #include <dirent.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <stddef.h>
 #include <errno.h>
@@ -16,6 +17,8 @@
 #define CMP_FILE(a, b)	((a).st_ino == (b).st_ino && (a).st_dev == (b).st_dev)
 #define HIKEY2DIR(k)	((struct dir *)((k) - offsetof(struct dir, path)))
 
+#define CASE_INS	(1 << 0)
+
 static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
 static void dir_free(struct dir *);
@@ -27,10 +30,12 @@ static void dir_sort(struct dir *);
 static void dir_filter(struct dir *);
 
 static int sortby_name(const void *, const void *);
+static int sortby_name_case(const void *, const void *);
 static int sortby_size(const void *, const void *);
 
 static struct htable htdir;
 static int (*sort_func)(const void *, const void *) = sortby_name;
+static unsigned sort_flags = 0;
 static unsigned show_hidden = 0;
 
 void
@@ -64,6 +69,18 @@ fs_set_sort(unsigned code)
 		sort_func = sortby_size;
 		break;
 	}
+}
+
+void
+fs_set_caseins(unsigned c)
+{
+	sort_flags = (c > 0) ? sort_flags | CASE_INS : sort_flags & ~CASE_INS;
+}
+
+void
+fs_toggle_caseins(void)
+{
+	sort_flags ^= CASE_INS;
 }
 
 void
@@ -177,6 +194,12 @@ sortby_name(const void *a, const void *b)
 }
 
 int
+sortby_name_case(const void *a, const void *b)
+{
+	return strcasecmp(((struct file *)a)->name, ((struct file *)b)->name);
+}
+
+int
 sortby_size(const void *a, const void *b)
 {
 	struct file *fa = (struct file *)a;
@@ -209,8 +232,17 @@ dir_create(const char *path, size_t plen)
 void
 dir_sort(struct dir *dir)
 {
-	qsort(dir->fi_all, dir->size_all, sizeof(struct file), sort_func);
+	if (sort_func == sortby_name) {
+		if (sort_flags & CASE_INS) {
+			qsort(dir->fi_all, dir->size_all, sizeof(struct file),
+			      sortby_name_case);
+		} else {
+			qsort(dir->fi_all, dir->size_all, sizeof(struct file),
+			      sortby_name);
+		}
+	}
 	dir->sort_func = sort_func;
+	dir->sort_flags = sort_flags;
 }
 
 void
@@ -218,7 +250,8 @@ dir_resort(struct dir *dir)
 {
 	struct stat st;
 
-	if (DIR_IS_FAIL(dir) || dir->sort_func == sort_func)
+	if (DIR_IS_FAIL(dir) || (dir->sort_func == sort_func &&
+				 dir->sort_flags == sort_flags))
 		return;
 
 	st = dir->fi[dir->cf]->st;

@@ -55,6 +55,8 @@ void fs_clean(void);
 void fs_set_sort(unsigned);
 void fs_set_caseins(unsigned);
 void fs_toggle_caseins(void);
+void fs_set_dirfirst(unsigned);
+void fs_toggle_dirfirst(void);
 
 void fs_set_showhid(unsigned);
 void fs_toggle_showhid(void);

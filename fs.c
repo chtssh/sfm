@@ -16,8 +16,11 @@
 #define IS_ROOT(X)	(X[0] == '/' && !X[1])
 #define CMP_FILE(a, b)	((a).st_ino == (b).st_ino && (a).st_dev == (b).st_dev)
 #define HIKEY2DIR(k)	((struct dir *)((k) - offsetof(struct dir, path)))
+#define QSORT_DIR(d, f) (qsort((d)->fi_all, (d)->size_all, \
+			       sizeof(struct file), (f)))
 
 #define CASE_INS	(1 << 0)
+#define DIR_FIRST	(1 << 1)
 
 static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
@@ -81,6 +84,18 @@ void
 fs_toggle_caseins(void)
 {
 	sort_flags ^= CASE_INS;
+}
+
+void
+fs_set_dirfirst(unsigned c)
+{
+	sort_flags = (c > 0) ? sort_flags | DIR_FIRST : sort_flags & ~DIR_FIRST;
+}
+
+void
+fs_toggle_dirfirst(void)
+{
+	sort_flags ^= DIR_FIRST;
 }
 
 void
@@ -213,6 +228,16 @@ sortby_size(const void *a, const void *b)
 	return 0;
 }
 
+int
+sortby_dirfirst(const void *a, const void *b)
+{
+	if (S_ISDIR(((struct file *)b)->st.st_mode)
+	    && !S_ISDIR(((struct file *)a)->st.st_mode))
+		return 1;
+
+	return 0;
+}
+
 struct dir *
 dir_create(const char *path, size_t plen)
 {
@@ -233,14 +258,15 @@ void
 dir_sort(struct dir *dir)
 {
 	if (sort_func == sortby_name) {
-		if (sort_flags & CASE_INS) {
-			qsort(dir->fi_all, dir->size_all, sizeof(struct file),
-			      sortby_name_case);
-		} else {
-			qsort(dir->fi_all, dir->size_all, sizeof(struct file),
-			      sortby_name);
-		}
+		if (sort_flags & CASE_INS)
+			QSORT_DIR(dir, sortby_name_case);
+		else
+			QSORT_DIR(dir, sortby_name);
 	}
+
+	if (sort_flags & DIR_FIRST)
+		QSORT_DIR(dir, sortby_dirfirst);
+
 	dir->sort_func = sort_func;
 	dir->sort_flags = sort_flags;
 }

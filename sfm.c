@@ -31,7 +31,8 @@ static void goto_line(union arg *);
 static void goto_dir(union arg *);
 static void sort_files(union arg *);
 static void show_hidden_t(union arg *);
-void sort_caseins_t(union arg *);
+static void sort_caseins_t(union arg *);
+static void sort_dirfirst_t(union arg *);
 static void quit(union arg *);
 
 static int is_topdir_gt2col(void);
@@ -259,6 +260,19 @@ sort_caseins_t(union arg *arg)
 }
 
 void
+sort_dirfirst_t(union arg *arg)
+{
+	size_t i;
+
+	(void)arg;
+	fs_toggle_dirfirst();
+	for (i = 0; i < LENGTH(dirs); ++i)
+		if (dirs[i] != NULL)
+			dir_resort(dirs[i]);
+	screenredraw();
+}
+
+void
 quit(union arg *arg)
 {
 	(void)arg;
@@ -333,6 +347,7 @@ setup(void)
 	fs_init();
 	fs_set_sort(sort);
 	fs_set_caseins(sort_case_insensitive);
+	fs_set_dirfirst(sort_directories_first);
 	fs_set_showhid(show_hidden);
 
 	a.v = getcwd(buffer, PATH_MAX);

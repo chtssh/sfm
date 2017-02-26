@@ -2,6 +2,7 @@ static const unsigned column_ratios[] = { 2, 3, 3 };
 
 static const unsigned sort = SORTBY_NAME;
 static const unsigned sort_case_insensitive = 1;
+static const unsigned sort_directories_first = 1;
 
 static const unsigned show_hidden = 0;
 
@@ -30,5 +31,6 @@ static struct key keys[] = {
 	{ "ob",		sort_files,	{.u = SORTBY_NAME } },
 	{ "os",		sort_files,	{.u = SORTBY_SIZE } },
 	{ "zs",		sort_caseins_t,	{0} },
+	{ "zd",		sort_dirfirst_t,{0} },
 	{ "q",		quit,		{0} },
 };

@@ -10,7 +10,12 @@ struct window {
 	int h;
 };
 
+struct clrscheme {
+	uint16_t fg;
+	uint16_t bg;
+};
+
 void win_resize(struct window *, int, int, int, int);
-void wprint(struct window *, int, int, int, int, const char *);
+void wprint(struct window *, int, int, struct clrscheme *, const char *);
 
 #endif /* UI_H */

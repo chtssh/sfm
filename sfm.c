@@ -20,6 +20,21 @@ struct key {
 	union arg arg;
 };
 
+enum {
+	CS_REGULAR,
+	CS_DIR,
+	CS_LNKDIR,
+	CS_EXE,
+	CS_CHR,
+	CS_BLK,
+	CS_FIFO,
+	CS_SOCK,
+	CS_LNKNE,
+	CS_DIREMPTY,
+	CS_DIRERR,
+	CS_LAST
+};
+
 static void setup(void);
 static void run(void);
 static void cleanup(void) __attribute__((destructor));
@@ -45,6 +60,7 @@ static size_t prefix;
 
 #include "config.h"
 
+struct numclrschemes { char check[LENGTH(clrschemes) < CS_LAST ? -1 : 1]; };
 struct numratios { char check[LENGTH(column_ratios) < 2 ? -1 : 1]; };
 static int (*is_topdir)(void) = (LENGTH(column_ratios) == 2)
 	? is_topdir_eq2col : is_topdir_gt2col;
@@ -96,7 +112,7 @@ wprintdir(struct window *win, struct dir *dir)
 {
 	size_t i;
 	int y;
-	int fg;
+	struct clrscheme cs;
 
 	if (dir == NULL)
 		return;
@@ -104,49 +120,55 @@ wprintdir(struct window *win, struct dir *dir)
 	if (DIR_IS_FAIL(dir))
 		switch (DIR_ERROR(dir)) {
 		case EACCES:
-			wprint(win, 0, 0, 0, TB_RED, "Permission denied.");
+			wprint(win, 0, 0, &clrschemes[CS_DIRERR],
+			       "Permission denied.");
 			return;
 		case ENOENT:
-			wprint(win, 0, 0, 0, TB_RED, "Directory doesn't exist.");
+			wprint(win, 0, 0, &clrschemes[CS_DIRERR],
+			       "Directory doesn't exist.");
 			return;
 		default:
-			wprint(win, 0, 0, 0, TB_RED, "Unknown error.");
+			wprint(win, 0, 0, &clrschemes[CS_DIRERR],
+			       "Unknown error.");
 			return;
 		}
 
 	if (DIR_IS_EMPTY(dir)) {
-		wprint(win, 0, 0, 0, TB_DEFAULT, "Empty.");
+		wprint(win, 0, 0, &clrschemes[CS_DIREMPTY], "Empty.");
 		return;
 	}
 
 	for (i = dir->cf - dir->cl, y = 0; y <= win->h && i < dir->size; ++y, ++i) {
-		if (dir->fi[i]->realpath == dir->fi[i]->name) {
-			fg = TB_BOLD | TB_MAGENTA;
-		} else if (dir->fi[i]->realpath != NULL) {
-			fg = TB_BOLD | TB_CYAN;
-		} else if (S_ISREG(dir->fi[i]->st.st_mode)) {
-			if (dir->fi[i]->st.st_mode & 0111)
-				fg = TB_BOLD | TB_GREEN;
+#define curmode (dir->fi[i]->st.st_mode)
+
+		if (dir->fi[i]->realpath == dir->fi[i]->name)
+			cs = clrschemes[CS_LNKNE];
+		else if (dir->fi[i]->realpath != NULL)
+			cs = clrschemes[CS_LNKDIR];
+		else if (S_ISREG(curmode))
+			if (curmode & 0111)
+				cs = clrschemes[CS_EXE];
 			else
-				fg = TB_DEFAULT;
-		} else if (S_ISDIR(dir->fi[i]->st.st_mode)) {
-			fg = TB_BOLD | TB_BLUE;
-		} else if (S_ISCHR(dir->fi[i]->st.st_mode)) {
-			fg = TB_WHITE;
-		} else if (S_ISBLK(dir->fi[i]->st.st_mode)) {
-			fg = TB_WHITE;
-		} else if (S_ISFIFO(dir->fi[i]->st.st_mode)) {
-			fg = TB_YELLOW;
-		} else if (S_ISSOCK(dir->fi[i]->st.st_mode)) {
-			fg = TB_BOLD | TB_MAGENTA;
-		} else {
-			fg = TB_DEFAULT;
-		}
+				cs = clrschemes[CS_REGULAR];
+		else if (S_ISDIR(curmode))
+			cs = clrschemes[CS_DIR];
+		else if (S_ISCHR(curmode))
+			cs = clrschemes[CS_CHR];
+		else if (S_ISBLK(curmode))
+			cs = clrschemes[CS_BLK];
+		else if (S_ISFIFO(curmode))
+			cs = clrschemes[CS_FIFO];
+		else if (S_ISSOCK(curmode))
+			cs = clrschemes[CS_SOCK];
+		else
+			cs = clrschemes[CS_REGULAR];
 
 		if (i == dir->cf)
-			fg |= TB_REVERSE;
+			cs.fg |= TB_REVERSE;
 
-		wprint(win, 1, y, fg, 0, dir->fi[i]->name);
+		wprint(win, 1, y, &cs, dir->fi[i]->name);
+
+#undef curmode
 	}
 }
 

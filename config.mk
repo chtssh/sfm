@@ -5,6 +5,6 @@ VERSION = 0.1
 LIBS = -ltermbox
 
 # flags
-CPPFLAGS = -D_POSIX_C_SOURCE=200809L
+CPPFLAGS = -D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=2
 CFLAGS += -std=c99 -pedantic -Wall -Wextra -Wvariadic-macros -Os ${INCS} ${CPPFLAGS}
 LDFLAGS += ${LIBS}

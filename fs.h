@@ -6,6 +6,7 @@
 struct file {
 	struct stat st;
 	char *name;
+	char *realpath;
 };
 
 struct dir {

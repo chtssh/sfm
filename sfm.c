@@ -96,6 +96,7 @@ wprintdir(struct window *win, struct dir *dir)
 {
 	size_t i;
 	int y;
+	int fg;
 
 	if (dir == NULL)
 		return;
@@ -118,9 +119,35 @@ wprintdir(struct window *win, struct dir *dir)
 		return;
 	}
 
-	for (i = dir->cf - dir->cl, y = 0; y <= win->h && i < dir->size; ++y, ++i)
-		wprint(win, 1, y, 0, 0, dir->fi[i]->name);
-	wprint(win, 1, dir->cl, 0, TB_REVERSE, dir->fi[dir->cf]->name);
+	for (i = dir->cf - dir->cl, y = 0; y <= win->h && i < dir->size; ++y, ++i) {
+		if (dir->fi[i]->realpath == dir->fi[i]->name) {
+			fg = TB_BOLD | TB_MAGENTA;
+		} else if (dir->fi[i]->realpath != NULL) {
+			fg = TB_BOLD | TB_CYAN;
+		} else if (S_ISREG(dir->fi[i]->st.st_mode)) {
+			if (dir->fi[i]->st.st_mode & 0111)
+				fg = TB_BOLD | TB_GREEN;
+			else
+				fg = TB_DEFAULT;
+		} else if (S_ISDIR(dir->fi[i]->st.st_mode)) {
+			fg = TB_BOLD | TB_BLUE;
+		} else if (S_ISCHR(dir->fi[i]->st.st_mode)) {
+			fg = TB_WHITE;
+		} else if (S_ISBLK(dir->fi[i]->st.st_mode)) {
+			fg = TB_WHITE;
+		} else if (S_ISFIFO(dir->fi[i]->st.st_mode)) {
+			fg = TB_YELLOW;
+		} else if (S_ISSOCK(dir->fi[i]->st.st_mode)) {
+			fg = TB_BOLD | TB_MAGENTA;
+		} else {
+			fg = TB_DEFAULT;
+		}
+
+		if (i == dir->cf)
+			fg |= TB_REVERSE;
+
+		wprint(win, 1, y, fg, 0, dir->fi[i]->name);
+	}
 }
 
 void

@@ -262,6 +262,8 @@ dir_sort(struct dir *dir)
 			QSORT_DIR(dir, sortby_name_case);
 		else
 			QSORT_DIR(dir, sortby_name);
+	} else {
+		QSORT_DIR(dir, sort_func);
 	}
 
 	if (sort_flags & DIR_FIRST)
@@ -356,11 +358,25 @@ dir_loadfiles(struct dir *dir)
 						  sizeof(struct file));
 		}
 
+#define lastfi		(dir->fi_all[dir->size_all])
+
 		siz = strlen(de->d_name) + 1;
-		dir->fi_all[dir->size_all].name = sfm_strndup(de->d_name, siz);
+		lastfi.name = sfm_strndup(de->d_name, siz);
 
 		memcpy(buffer + dir->plen + 1, de->d_name, siz);
-		stat(buffer, &dir->fi_all[dir->size_all++].st);
+		lstat(buffer, &lastfi.st);
+		if (S_ISLNK(lastfi.st.st_mode)) {
+			if (stat(buffer, &lastfi.st) != 0) {
+				lastfi.realpath = lastfi.name;
+			} else {
+				lastfi.realpath = realpath(buffer, NULL);
+			}
+		} else {
+			lastfi.realpath = NULL;
+		}
+
+		dir->size_all++;
+#undef lastfi
 	}
 
 	closedir(ds);
@@ -377,8 +393,11 @@ dir_free(struct dir *dir)
 {
 	size_t i;
 
-	for (i = 0; i < dir->size_all; ++i)
+	for (i = 0; i < dir->size_all; ++i) {
+		if (dir->fi_all[i].realpath != dir->fi_all[i].name)
+			free(dir->fi_all[i].realpath);
 		free(dir->fi_all[i].name);
+	}
 	free(dir->fi_all);
 	free(dir->fi);
 	free(dir);

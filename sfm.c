@@ -7,6 +7,12 @@
 #include "ui.h"
 #include "fs.h"
 
+enum {
+	TOGGLE = -1,
+	FALSE,
+	TRUE
+};
+
 union arg {
 	int i;
 	unsigned u;
@@ -44,10 +50,10 @@ static void move_h(union arg *);
 static void move_page(union arg *);
 static void goto_line(union arg *);
 static void goto_dir(union arg *);
-static void sort_files(union arg *);
-static void show_hidden_t(union arg *);
-static void sort_caseins_t(union arg *);
-static void sort_dirfirst_t(union arg *);
+static void sortby(union arg *);
+static void show_hid(union arg *);
+static void sort_caseins(union arg *);
+static void sort_dirfirst(union arg *);
 static void quit(union arg *);
 
 static int is_topdir_gt2col(void);
@@ -271,7 +277,7 @@ goto_line(union arg *arg)
 }
 
 void
-sort_files(union arg *arg)
+sortby(union arg *arg)
 {
 	size_t i;
 
@@ -283,12 +289,14 @@ sort_files(union arg *arg)
 }
 
 void
-show_hidden_t(union arg *arg)
+show_hid(union arg *arg)
 {
 	size_t i;
 
-	(void)arg;
-	fs_toggle_showhid();
+	if (arg->i < 0)
+		fs_toggle_showhid();
+	else
+		fs_set_showhid(arg->i);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_refilter(dirs[i]);
@@ -296,12 +304,14 @@ show_hidden_t(union arg *arg)
 }
 
 void
-sort_caseins_t(union arg *arg)
+sort_caseins(union arg *arg)
 {
 	size_t i;
 
-	(void)arg;
-	fs_toggle_caseins();
+	if (arg->i < 0)
+		fs_toggle_caseins();
+	else
+		fs_set_caseins(arg->i);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_resort(dirs[i]);
@@ -309,12 +319,14 @@ sort_caseins_t(union arg *arg)
 }
 
 void
-sort_dirfirst_t(union arg *arg)
+sort_dirfirst(union arg *arg)
 {
 	size_t i;
 
-	(void)arg;
-	fs_toggle_dirfirst();
+	if (arg->i < 0)
+		fs_toggle_dirfirst();
+	else
+		fs_set_dirfirst(arg->i);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_resort(dirs[i]);

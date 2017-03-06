@@ -22,9 +22,8 @@ struct dir {
 	size_t plen;
 	size_t cf;
 	int cl;			/* current line: rw field for TUI */
-	int (*sort_func)(const void *, const void *);
-	unsigned sort_flags;
-	unsigned showhid;
+	int (*sort)(const void *, const void *);
+	unsigned flags;
 	char path[1];
 };
 

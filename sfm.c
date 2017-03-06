@@ -56,23 +56,20 @@ static void sort_caseins(union arg *);
 static void sort_dirfirst(union arg *);
 static void quit(union arg *);
 
-static int is_topdir_gt2col(void);
-static int is_topdir_eq2col(void);
-
 static int runner = 1;
 static size_t prefix;
 
 #define PREFIX_MULT(i)	(prefix > 0 ? prefix * (i) : (size_t)(i))
+#define MIN_COLS	2
 
 #include "config.h"
 
 struct numclrschemes { char check[LENGTH(clrschemes) < CS_LAST ? -1 : 1]; };
-struct numratios { char check[LENGTH(column_ratios) < 2 ? -1 : 1]; };
-static int (*is_topdir)(void) = (LENGTH(column_ratios) == 2)
-	? is_topdir_eq2col : is_topdir_gt2col;
+struct numratios { char check[LENGTH(column_ratios) < MIN_COLS ? -1 : 1]; };
 
 static struct window wins[LENGTH(column_ratios)];
-static struct dir *dirs[LENGTH(column_ratios)];
+static struct dir *dirs[MAX(LENGTH(column_ratios), MIN_COLS + 1)];
+#define dir_prev	(dirs[LENGTH(dirs) - 3])
 #define dir_main	(dirs[LENGTH(dirs) - 2])
 #define win_main	(wins[LENGTH(wins) - 2])
 #define dir_preview	(dirs[LENGTH(dirs) - 1])
@@ -82,18 +79,6 @@ void
 dir_set_curline(int *cl, size_t cf)
 {
 	*cl = MIN(cf, (size_t)win_main.h);
-}
-
-int
-is_topdir_gt2col(void)
-{
-	return dirs[LENGTH(dirs) - 3] == NULL;
-}
-
-int
-is_topdir_eq2col(void)
-{
-	return dir_main->plen == 1;
 }
 
 void
@@ -186,7 +171,7 @@ screenredraw(void)
 	tb_clear();
 
 	for (i = 0; i < LENGTH(wins); ++i)
-		wprintdir(&wins[i], dirs[i]);
+		wprintdir(&wins[i], dirs[i + LENGTH(dirs) - LENGTH(wins)]);
 
 	tb_present();
 }
@@ -226,7 +211,7 @@ move_h(union arg *arg)
 			dir_preview = dir_child(dir_main);
 		}
 	} else {
-		for (prefix = PREFIX_MULT(- arg->i); !is_topdir()
+		for (prefix = PREFIX_MULT(- arg->i); dir_prev != NULL
 		     && prefix > 0; --prefix) {
 			for (i = LENGTH(dirs) - 1; i > 0; --i)
 				dirs[i] = dirs[i - 1];

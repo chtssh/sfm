@@ -5,7 +5,7 @@
 #include "util.h"
 #include "hash.h"
 #include "ui.h"
-#include "fs.h"
+#include "nav.h"
 
 enum {
 	TOGGLE = -1,
@@ -22,23 +22,13 @@ union arg {
 
 struct key {
 	char *codes;
-	void (*func)(union arg *);
+	void (*fnc)(union arg *);
 	union arg arg;
 };
 
-enum {
-	CS_REGULAR,
-	CS_DIR,
-	CS_LNKDIR,
-	CS_EXE,
-	CS_CHR,
-	CS_BLK,
-	CS_FIFO,
-	CS_SOCK,
-	CS_LNKNE,
-	CS_DIREMPTY,
-	CS_DIRERR,
-	CS_LAST
+struct schemes {
+	struct clrscheme reg, dir, lnk, exe, chr, blk,
+			 fifo, sock, lnkne, empty, err;
 };
 
 static void setup(void);
@@ -64,7 +54,6 @@ static size_t prefix;
 
 #include "config.h"
 
-struct numclrschemes { char check[LENGTH(clrschemes) < CS_LAST ? -1 : 1]; };
 struct numratios { char check[LENGTH(column_ratios) < MIN_COLS ? -1 : 1]; };
 
 static struct window wins[LENGTH(column_ratios)];
@@ -111,21 +100,21 @@ wprintdir(struct window *win, struct dir *dir)
 	if (DIR_IS_FAIL(dir))
 		switch (DIR_ERROR(dir)) {
 		case EACCES:
-			wprint(win, 0, 0, &clrschemes[CS_DIRERR],
+			wprint(win, 0, 0, &schemes.err,
 			       "Permission denied.");
 			return;
 		case ENOENT:
-			wprint(win, 0, 0, &clrschemes[CS_DIRERR],
+			wprint(win, 0, 0, &schemes.err,
 			       "Directory doesn't exist.");
 			return;
 		default:
-			wprint(win, 0, 0, &clrschemes[CS_DIRERR],
+			wprint(win, 0, 0, &schemes.err,
 			       "Unknown error.");
 			return;
 		}
 
 	if (DIR_IS_EMPTY(dir)) {
-		wprint(win, 0, 0, &clrschemes[CS_DIREMPTY], "Empty.");
+		wprint(win, 0, 0, &schemes.empty, "Empty.");
 		return;
 	}
 
@@ -133,26 +122,26 @@ wprintdir(struct window *win, struct dir *dir)
 #define curmode (dir->fi[i]->st.st_mode)
 
 		if (dir->fi[i]->realpath == dir->fi[i]->name)
-			cs = clrschemes[CS_LNKNE];
+			cs = schemes.lnkne;
 		else if (dir->fi[i]->realpath != NULL)
-			cs = clrschemes[CS_LNKDIR];
+			cs = schemes.lnk;
 		else if (S_ISREG(curmode))
 			if (curmode & 0111)
-				cs = clrschemes[CS_EXE];
+				cs = schemes.exe;
 			else
-				cs = clrschemes[CS_REGULAR];
+				cs = schemes.reg;
 		else if (S_ISDIR(curmode))
-			cs = clrschemes[CS_DIR];
+			cs = schemes.dir;
 		else if (S_ISCHR(curmode))
-			cs = clrschemes[CS_CHR];
+			cs = schemes.chr;
 		else if (S_ISBLK(curmode))
-			cs = clrschemes[CS_BLK];
+			cs = schemes.blk;
 		else if (S_ISFIFO(curmode))
-			cs = clrschemes[CS_FIFO];
+			cs = schemes.fifo;
 		else if (S_ISSOCK(curmode))
-			cs = clrschemes[CS_SOCK];
+			cs = schemes.sock;
 		else
-			cs = clrschemes[CS_REGULAR];
+			cs = schemes.reg;
 
 		if (i == dir->cf)
 			cs.fg |= TB_REVERSE;
@@ -266,7 +255,7 @@ sortby(union arg *arg)
 {
 	size_t i;
 
-	fs_set_sort(arg->u);
+	nav_set_sort(arg->u);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_resort(dirs[i]);
@@ -279,9 +268,9 @@ show_hid(union arg *arg)
 	size_t i;
 
 	if (arg->i < 0)
-		fs_toggle_showhid();
+		nav_toggle_showhid();
 	else
-		fs_set_showhid(arg->i);
+		nav_set_showhid(arg->i);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_refilter(dirs[i]);
@@ -294,9 +283,9 @@ sort_caseins(union arg *arg)
 	size_t i;
 
 	if (arg->i < 0)
-		fs_toggle_caseins();
+		nav_toggle_caseins();
 	else
-		fs_set_caseins(arg->i);
+		nav_set_caseins(arg->i);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_resort(dirs[i]);
@@ -309,9 +298,9 @@ sort_dirfirst(union arg *arg)
 	size_t i;
 
 	if (arg->i < 0)
-		fs_toggle_dirfirst();
+		nav_toggle_dirfirst();
 	else
-		fs_set_dirfirst(arg->i);
+		nav_set_dirfirst(arg->i);
 	for (i = 0; i < LENGTH(dirs); ++i)
 		if (dirs[i] != NULL)
 			dir_resort(dirs[i]);
@@ -339,7 +328,7 @@ on_keypress(struct tb_event *ev)
 		return;
 	}
 
-	if (!ci) {
+	if (ci == 0) {
 		for (i = 0; i < LENGTH(keys); ++i)
 			if ((uint32_t)keys[i].codes[ci] == code)
 				pkeys[j++] = &keys[i];
@@ -351,10 +340,10 @@ on_keypress(struct tb_event *ev)
 			pkeys[i] = ptmp[i];
 	}
 
-	++ci;
+	ci++;
 	pkeys[j] = NULL;
 
-	if (j == 1 && !(*pkeys)->codes[ci])
+	if (j == 1 && (*pkeys)->codes[ci] == '\0')
 		goto callf;
 	else if (j == 0)
 		goto reset;
@@ -362,7 +351,7 @@ on_keypress(struct tb_event *ev)
 	/* TODO: print avalible keys */
 	return;
 
-callf:	(*pkeys)->func(&(*pkeys)->arg);
+callf:	(*pkeys)->fnc(&(*pkeys)->arg);
 reset:	ci = prefix = 0;
 }
 
@@ -370,7 +359,6 @@ void
 setup(void)
 {
 	struct tb_event ev;
-	union arg a;
 
 	/* init ui */
 	switch (tb_init()) {
@@ -390,20 +378,21 @@ setup(void)
 	on_resize(&ev);
 
 	/* init fs */
-	fs_init();
-	fs_set_sort(sort);
-	fs_set_caseins(sort_case_insensitive);
-	fs_set_dirfirst(sort_directories_first);
-	fs_set_showhid(show_hidden);
-
-	a.v = getcwd(buffer, PATH_MAX);
-	goto_dir(&a);
+	nav_init();
+	nav_set_sort(sort);
+	nav_set_caseins(sort_case_insensitive);
+	nav_set_dirfirst(sort_directories_first);
+	nav_set_showhid(show_hidden);
 }
 
 void
 run(void)
 {
+	union arg arg;
 	struct tb_event ev;
+
+	arg.v = getcwd(buffer, PATH_MAX);
+	goto_dir(&arg);
 
 	while(runner && tb_poll_event(&ev) > 0)
 		switch(ev.type) {
@@ -420,7 +409,7 @@ run(void)
 void
 cleanup(void)
 {
-	fs_clean();
+	nav_clean();
 	tb_shutdown();
 }
 

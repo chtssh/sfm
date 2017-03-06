@@ -22,7 +22,7 @@ struct dir {
 	size_t plen;
 	size_t cf;
 	int cl;			/* current line: rw field for TUI */
-	int (*sort)(const void *, const void *);
+	int (*cmp)(const void *, const void *);
 	unsigned flags;
 	char path[1];
 };
@@ -49,17 +49,17 @@ struct dir {
 #define SORTBY_NAME	0
 #define SORTBY_SIZE	1
 
-void fs_init(void);
-void fs_clean(void);
+void nav_init(void);
+void nav_clean(void);
 
-void fs_set_sort(unsigned);
-void fs_set_caseins(unsigned);
-void fs_toggle_caseins(void);
-void fs_set_dirfirst(unsigned);
-void fs_toggle_dirfirst(void);
+void nav_set_sort(unsigned);
+void nav_set_caseins(unsigned);
+void nav_toggle_caseins(void);
+void nav_set_dirfirst(unsigned);
+void nav_toggle_dirfirst(void);
+void nav_set_showhid(unsigned);
+void nav_toggle_showhid(void);
 
-void fs_set_showhid(unsigned);
-void fs_toggle_showhid(void);
 struct dir * dir_get(const char *);
 struct dir * dir_parent(const struct dir *);
 struct dir * dir_child(const struct dir *);

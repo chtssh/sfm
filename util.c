@@ -54,9 +54,8 @@ sfm_strndup(const char *str, size_t siz)
 {
 	char *dst;
 
-	dst = sfm_malloc(siz + 1);
+	dst = sfm_malloc(siz);
 	memcpy(dst, str, siz);
-	dst[siz] = '\0';
 
 	return dst;
 }

@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = sfm.c ui.c fs.c hash.c util.c
+SRC = sfm.c ui.c nav.c hash.c util.c
 OBJ = ${SRC:.c=.o}
 
 all: options sfm

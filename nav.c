@@ -6,7 +6,7 @@
 #include <errno.h>
 
 #include "util.h"
-#include "fs.h"
+#include "nav.h"
 #include "hash.h"
 
 #define FI_INIT_SIZE	(1U << 4)
@@ -19,9 +19,9 @@
 #define QSORT_DIR(d, f) (qsort((d)->fi_all, (d)->size_all, \
 			       sizeof(struct file), (f)))
 
-#define CASE_INS	(1 << 0)
-#define DIR_FIRST	(1 << 1)
-#define SHOW_HIDDEN	(1 << 2)
+#define FLAG_ICASE	(1 << 0)
+#define FLAG_FDIR	(1 << 1)
+#define FLAG_SHOWHID	(1 << 2)
 
 static struct dir * _dir_get(const char *, size_t);
 static struct dir * dir_create(const char *, size_t);
@@ -33,24 +33,24 @@ static void dir_loadfiles(struct dir *);
 static void dir_sort(struct dir *);
 static void dir_filter(struct dir *);
 
-static int sortby_name(const void *, const void *);
-static int sortby_name_ci(const void *, const void *);
-static int sortby_size(const void *, const void *);
-static int sortby_dirfirst(const void *, const void *);
+static int cmp_name(const void *, const void *);
+static int cmp_name_ci(const void *, const void *);
+static int cmp_size(const void *, const void *);
+static int cmp_dir(const void *, const void *);
 
 static struct htable htdir;
-static int (*sort)(const void *, const void *) = sortby_name;
+static int (*compare)(const void *, const void *) = cmp_name;
 static unsigned flags;
 #define SET_FLAGBYVAL(f, v)	(flags = ((v) == 0) ? flags & ~(f) : flags | (f))
 
 void
-fs_init(void)
+nav_init(void)
 {
 	ht_init(&htdir, FS_INIT_SIZE);
 }
 
 void
-fs_clean(void)
+nav_clean(void)
 {
 	size_t i;
 	char *ik;
@@ -64,52 +64,52 @@ fs_clean(void)
 }
 
 void
-fs_set_sort(unsigned c)
+nav_set_sort(unsigned c)
 {
 	switch (c) {
 	case SORTBY_NAME:
-		sort = sortby_name;
+		compare = cmp_name;
 		break;
 	case SORTBY_SIZE:
-		sort = sortby_size;
+		compare = cmp_size;
 		break;
 	}
 }
 
 void
-fs_set_caseins(unsigned c)
+nav_set_caseins(unsigned c)
 {
-	SET_FLAGBYVAL(CASE_INS, c);
+	SET_FLAGBYVAL(FLAG_ICASE, c);
 }
 
 void
-fs_toggle_caseins(void)
+nav_toggle_caseins(void)
 {
-	flags ^= CASE_INS;
+	flags ^= FLAG_ICASE;
 }
 
 void
-fs_set_dirfirst(unsigned c)
+nav_set_dirfirst(unsigned c)
 {
-	SET_FLAGBYVAL(DIR_FIRST, c);
+	SET_FLAGBYVAL(FLAG_FDIR, c);
 }
 
 void
-fs_toggle_dirfirst(void)
+nav_toggle_dirfirst(void)
 {
-	flags ^= DIR_FIRST;
+	flags ^= FLAG_FDIR;
 }
 
 void
-fs_set_showhid(unsigned c)
+nav_set_showhid(unsigned c)
 {
-	SET_FLAGBYVAL(SHOW_HIDDEN, c);
+	SET_FLAGBYVAL(FLAG_SHOWHID, c);
 }
 
 void
-fs_toggle_showhid(void)
+nav_toggle_showhid(void)
 {
-	flags ^= SHOW_HIDDEN;
+	flags ^= FLAG_SHOWHID;
 }
 
 struct dir *
@@ -205,19 +205,19 @@ dir_child(const struct dir *dir)
 }
 
 int
-sortby_name(const void *a, const void *b)
+cmp_name(const void *a, const void *b)
 {
 	return strcmp(((struct file *)a)->name, ((struct file *)b)->name);
 }
 
 int
-sortby_name_ci(const void *a, const void *b)
+cmp_name_ci(const void *a, const void *b)
 {
 	return strcasecmp(((struct file *)a)->name, ((struct file *)b)->name);
 }
 
 int
-sortby_size(const void *a, const void *b)
+cmp_size(const void *a, const void *b)
 {
 	struct file *fa = (struct file *)a;
 	struct file *fb = (struct file *)b;
@@ -231,7 +231,7 @@ sortby_size(const void *a, const void *b)
 }
 
 int
-sortby_dirfirst(const void *a, const void *b)
+cmp_dir(const void *a, const void *b)
 {
 	if (S_ISDIR(((struct file *)b)->st.st_mode)
 	    && !S_ISDIR(((struct file *)a)->st.st_mode))
@@ -259,15 +259,15 @@ dir_create(const char *path, size_t plen)
 void
 dir_sort(struct dir *dir)
 {
-	if (sort == sortby_name && flags & CASE_INS)
-		QSORT_DIR(dir, sortby_name_ci);
+	if (compare == cmp_name && flags & FLAG_ICASE)
+		QSORT_DIR(dir, cmp_name_ci);
 	else
-		QSORT_DIR(dir, sort);
+		QSORT_DIR(dir, compare);
 
-	if (flags & DIR_FIRST)
-		QSORT_DIR(dir, sortby_dirfirst);
+	if (flags & FLAG_FDIR)
+		QSORT_DIR(dir, cmp_dir);
 
-	dir->sort = sort;
+	dir->cmp = compare;
 	dir->flags = flags;
 }
 
@@ -276,8 +276,8 @@ dir_resort(struct dir *dir)
 {
 	struct stat st;
 
-	if (DIR_IS_FAIL(dir) || (dir->sort == sort &&
-				 dir->flags == flags))
+	if (DIR_IS_FAIL(dir) || (dir->cmp == compare
+				 && dir->flags == flags))
 		return;
 
 	st = dir->fi[dir->cf]->st;
@@ -295,7 +295,7 @@ dir_filter(struct dir *dir)
 
 	/* TODO: implement custom filters. */
 
-	if (flags & SHOW_HIDDEN) {
+	if (flags & FLAG_SHOWHID) {
 		for (i = 0; i < dir->size_all; ++i)
 			dir->fi[i] = &dir->fi_all[i];
 		dir->size = dir->size_all;
@@ -314,7 +314,7 @@ dir_refilter(struct dir *dir)
 	struct stat st;
 
 	if (DIR_IS_FAIL(dir)
-	    || (flags & SHOW_HIDDEN) == (dir->flags & SHOW_HIDDEN))
+	    || (flags & FLAG_SHOWHID) == (dir->flags & FLAG_SHOWHID))
 		return;
 
 	st = dir->fi[dir->cf]->st;

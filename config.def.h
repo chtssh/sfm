@@ -6,18 +6,18 @@ static const unsigned sort_directories_first = 1;
 
 static const unsigned show_hidden = 0;
 
-static struct clrscheme clrschemes[CS_LAST] = {
-	[CS_REGULAR]	= { TB_DEFAULT,			TB_DEFAULT },
-	[CS_DIR]	= { TB_BLUE | TB_BOLD,		TB_DEFAULT },
-	[CS_LNKDIR]	= { TB_CYAN | TB_BOLD,		TB_DEFAULT },
-	[CS_EXE]	= { TB_GREEN | TB_BOLD,		TB_DEFAULT },
-	[CS_CHR]	= { TB_YELLOW | TB_BOLD,	TB_DEFAULT },
-	[CS_BLK]	= { TB_YELLOW | TB_BOLD,	TB_DEFAULT },
-	[CS_FIFO]	= { TB_YELLOW,			TB_DEFAULT },
-	[CS_SOCK]	= { TB_YELLOW,			TB_DEFAULT },
-	[CS_LNKNE]	= { TB_MAGENTA | TB_BOLD,	TB_DEFAULT },
-	[CS_DIREMPTY]	= { TB_DEFAULT,			TB_DEFAULT },
-	[CS_DIRERR]	= { TB_DEFAULT,			TB_RED },
+static struct schemes schemes = {
+	.reg	= { TB_DEFAULT },
+	.dir	= { TB_BLUE | TB_BOLD },
+	.lnk	= { TB_CYAN },
+	.exe	= { TB_GREEN | TB_BOLD },
+	.chr	= { TB_YELLOW | TB_BOLD },
+	.blk	= { TB_YELLOW | TB_BOLD },
+	.fifo	= { TB_YELLOW },
+	.sock	= { TB_YELLOW },
+	.lnkne	= { TB_MAGENTA | TB_BOLD },
+	.empty	= { TB_DEFAULT },
+	.err	= { TB_DEFAULT, TB_RED }
 };
 
 static struct key keys[] = {

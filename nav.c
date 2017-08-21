@@ -1,8 +1,5 @@
 #include <dirent.h>
 #include <string.h>
-#include <strings.h>
-#include <unistd.h>
-#include <stddef.h>
 #include <errno.h>
 
 #include "util.h"

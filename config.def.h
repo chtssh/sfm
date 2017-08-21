@@ -6,18 +6,18 @@ static const unsigned sort_directories_first = 1;
 
 static const unsigned show_hidden = 0;
 
-static struct schemes schemes = {
-	.reg	= { TB_DEFAULT },
-	.dir	= { TB_BLUE | TB_BOLD },
-	.lnk	= { TB_CYAN },
-	.exe	= { TB_GREEN | TB_BOLD },
-	.chr	= { TB_YELLOW | TB_BOLD },
-	.blk	= { TB_YELLOW | TB_BOLD },
-	.fifo	= { TB_YELLOW },
-	.sock	= { TB_YELLOW },
-	.lnkne	= { TB_MAGENTA | TB_BOLD },
-	.empty	= { TB_DEFAULT },
-	.err	= { TB_DEFAULT, TB_RED }
+static struct colorscheme scheme = {
+	.reg	= { COLOR_WHITE },
+	.dir	= { COLOR_BLUE | ATTR_BOLD },
+	.lnk	= { COLOR_CYAN },
+	.exe	= { COLOR_GREEN | ATTR_BOLD },
+	.chr	= { COLOR_YELLOW | ATTR_BOLD },
+	.blk	= { COLOR_YELLOW | ATTR_BOLD },
+	.fifo	= { COLOR_YELLOW },
+	.sock	= { COLOR_YELLOW },
+	.lnkne	= { COLOR_MAGENTA | ATTR_BOLD },
+	.empty	= { COLOR_WHITE },
+	.err	= { COLOR_WHITE, COLOR_RED }
 };
 
 static struct key keys[] = {

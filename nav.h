@@ -2,6 +2,8 @@
 #define FS_H
 
 #include <sys/stat.h>
+#include <stdint.h>
+#include <stddef.h>
 
 struct file {
 	struct stat st;

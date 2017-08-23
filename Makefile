@@ -3,7 +3,7 @@ include config.mk
 SRC = sfm.c ui.c nav.c hash.c util.c
 OBJ = ${SRC:.c=.o}
 
-all: options sfm
+all: termbox options sfm
 
 options:
 	@echo sfm build options:
@@ -25,8 +25,12 @@ sfm: ${OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
+termbox:
+	$(MAKE) -C $@
+
 clean:
 	@echo cleaning
 	@rm -f sfm ${OBJ}
+	$(MAKE) -C termbox clean
 
-.PHONY: all options clean
+.PHONY: all termbox options clean

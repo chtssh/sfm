@@ -6,7 +6,7 @@
 #include "nav.h"
 #include "util.h"
 
-static void ui_resize(struct ui *, int, int);
+static void ui_resize(struct ui *);
 static void win_resize(struct window *, int, int, int, int);
 static void win_draw(struct window *, struct colorscheme *);
 static void win_printline(struct window *, int, int, struct color *, const char *);
@@ -20,8 +20,6 @@ ui_create(unsigned int *win_ratios,
 	int fd;
 	struct ui *ui;
 	unsigned int i;
-	int width;
-	int height;
 	struct color *clr_dest, *clr_src;
 
 
@@ -59,9 +57,7 @@ ui_create(unsigned int *win_ratios,
 		clr_dest[i].bg = clr_src[i].bg + 1;
 	}
 
-	width = tb_width();
-	height = tb_height();
-	ui_resize(ui, width, height);
+	ui_resize(ui);
 
 	return ui;
 }
@@ -87,17 +83,23 @@ ui_redraw(struct ui *ui)
 }
 
 void
-ui_resize(struct ui *ui, int w, int h)
+ui_resize(struct ui *ui)
 {
+	int width;
+	int height;
 	unsigned int i;
 	unsigned int acc;
-	unsigned int width;
+	unsigned int win_width;
 
-	for (acc = 0, i = 0; i < ui->num_wins - 1; ++i, acc += width) {
-		width = (float)(ui->win[i].ratio) / ui->sum_ratios * w;
-		win_resize(ui->win + i, acc, 0, width - 1, h - 1);
+	width = tb_width();
+	height = tb_height();
+
+	for (acc = 0, i = 0; i < ui->num_wins - 1; ++i, acc += win_width) {
+		win_width = (float)(ui->win[i].ratio) / ui->sum_ratios * width;
+		win_resize(ui->win + i, acc, 0, win_width - 1, height - 1);
 	}
-	win_resize(ui->win + i, acc, 0, w - acc - 1, h - 1);
+	win_resize(ui->win + i, acc, 0, width - acc - 1, height - 1);
+
 }
 
 unsigned int *
@@ -115,6 +117,13 @@ ui_getch(struct ui *ui)
        return NULL;
 }
 
+void
+ui_on_resize(struct ui *ui)
+{
+	tb_update_size();
+	ui_resize(ui);
+	ui_redraw(ui);
+}
 
 void
 win_resize(struct window *win, int x, int y, int w, int h)

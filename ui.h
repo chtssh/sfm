@@ -37,5 +37,6 @@ struct ui * ui_create(unsigned int *, struct dir **, unsigned int, struct colors
 void ui_free(struct ui *);
 void ui_redraw(struct ui *);
 unsigned int * ui_getch(struct ui *);
+void ui_on_resize(struct ui *);
 
 #endif /* SFM_UI_H */

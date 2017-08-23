@@ -1,5 +1,6 @@
 #include <unistd.h> /* getcwd */
 #include <sys/select.h>
+#include <signal.h>
 
 #include "util.h"
 #include "ui.h"
@@ -27,6 +28,7 @@ struct key {
 static void setup(void);
 static void run(void);
 static void cleanup(void) __attribute__((destructor));
+static void winch_handler(int);
 
 static void move_v(union arg *);
 static void move_h(union arg *);
@@ -39,6 +41,7 @@ static void sort_caseins(union arg *);
 static void sort_dirfirst(union arg *);
 static void quit(union arg *);
 
+static int winch_fds[2];
 static int runner = 1;
 static size_t prefix;
 static struct ui *ui;
@@ -251,6 +254,12 @@ reset:	ci = prefix = 0;
 }
 
 void
+winch_handler(int sig)
+{
+	write(winch_fds[1], &sig, sizeof(int));
+}
+
+void
 setup(void)
 {
 	/* init fs */
@@ -262,6 +271,9 @@ setup(void)
 
 	/* init ui */
 	ui = ui_create((unsigned int *)column_ratios, dirs, LENGTH(column_ratios), &scheme);
+
+	pipe(winch_fds);
+	signal(SIGWINCH, winch_handler);
 }
 
 void
@@ -270,6 +282,7 @@ run(void)
 	union arg arg;
 	fd_set fdset;
 	unsigned int *key;
+	int winch_sig;
 
 	arg.v = getcwd(buffer, PATH_MAX);
 	goto_dir(&arg);
@@ -277,12 +290,18 @@ run(void)
 	while(runner) {
 		FD_ZERO(&fdset);
 		FD_SET(ui->fd, &fdset);
-		select(ui->fd + 1, &fdset, 0, 0, 0);
+		FD_SET(winch_fds[0], &fdset);
+		select(MAX(ui->fd, winch_fds[0]) + 1, &fdset, 0, 0, 0);
 
 		if (FD_ISSET(ui->fd, &fdset)) {
 			while ((key = ui_getch(ui)) != NULL) {
 				on_keypress(*key);
 			}
+		}
+		if (FD_ISSET(winch_fds[0], &fdset)) {
+			winch_sig = 0;
+			read(winch_fds[0], &winch_sig, sizeof(int));
+			ui_on_resize(ui);
 		}
 	}
 }

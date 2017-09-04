@@ -8,12 +8,12 @@
 
 static void ui_resize(struct ui *);
 static void win_resize(struct window *, int, int, int, int);
-static void win_draw(struct window *, struct colorscheme *);
+static void win_draw(struct window *, struct dir *, struct colorscheme *);
 static void win_printline(struct window *, int, int, struct color *, const char *);
 
 struct ui *
-ui_create(unsigned int *win_ratios,
-	  struct dir **dir,
+ui_create(struct nav *nav,
+	  const unsigned int *win_ratios,
 	  unsigned int num_wins,
 	  struct colorscheme *scheme)
 {
@@ -38,6 +38,7 @@ ui_create(unsigned int *win_ratios,
 	}
 
 	ui = sfm_malloc(sizeof(struct ui));
+	ui->nav = nav;
 	ui->num_wins = num_wins;
 	ui->win = sfm_malloc(sizeof(struct window) * ui->num_wins);
 	ui->sum_ratios = 0;
@@ -46,7 +47,6 @@ ui_create(unsigned int *win_ratios,
 	for (i = 0; i < ui->num_wins; ++i) {
 		ui->sum_ratios += win_ratios[i];
 		ui->win[i].ratio = win_ratios[i];
-		ui->win[i].dir = dir + i;
 	}
 
 	clr_dest = (struct color *)&ui->clrscheme;
@@ -77,7 +77,7 @@ ui_redraw(struct ui *ui)
 
 	tb_clear();
 	for (i = 0; i < ui->num_wins; ++i) {
-		win_draw(ui->win + i, &ui->clrscheme);
+		win_draw(ui->win + i, ui->nav->dir[i], &ui->clrscheme);
 	}
 	tb_present();
 }
@@ -135,11 +135,33 @@ win_resize(struct window *win, int x, int y, int w, int h)
 }
 
 void
-win_draw(struct window *win, struct colorscheme *scheme)
+ui_line_up(struct ui *ui, size_t s)
+{
+	if ((size_t)(*ui->nav->main)->cl > s) {
+		(*ui->nav->main)->cl -= s;
+	} else {
+		(*ui->nav->main)->cl = 0;
+	}
+}
+
+void
+ui_line_down(struct ui *ui, size_t s)
+{
+	int sum;
+
+	sum = (*ui->nav->main)->cl + s;
+	if (sum > ui->win->h || sum < (*ui->nav->main)->cl) {
+		(*ui->nav->main)->cl = ui->win->h;
+	} else {
+		(*ui->nav->main)->cl = sum;
+	}
+}
+
+void
+win_draw(struct window *win, struct dir *dir, struct colorscheme *scheme)
 {
 	size_t i;
 	int y;
-	struct dir *dir = *(win->dir);
 	const char *err_msg;
 	struct color clr;
 
@@ -165,6 +187,10 @@ win_draw(struct window *win, struct colorscheme *scheme)
 	if (DIR_IS_EMPTY(dir)) {
 		win_printline(win, 0, 0, &scheme->empty, "Empty.");
 		return;
+	}
+
+	if (dir->cl < 0) {
+		dir->cl = MIN(dir->cf, (size_t)win->h);
 	}
 
 	for (i = dir->cf - dir->cl, y = 0; y <= win->h && i < dir->size; ++y, ++i) {

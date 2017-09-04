@@ -6,12 +6,6 @@
 #include "ui.h"
 #include "nav.h"
 
-enum {
-	TOGGLE = -1,
-	FALSE,
-	TRUE
-};
-
 union arg {
 	int i;
 	unsigned u;
@@ -35,6 +29,7 @@ static void move_h(union arg *);
 static void move_page(union arg *);
 static void goto_line(union arg *);
 static void goto_dir(union arg *);
+
 static void sortby(union arg *);
 static void show_hid(union arg *);
 static void sort_caseins(union arg *);
@@ -44,6 +39,7 @@ static void quit(union arg *);
 static int winch_fds[2];
 static int runner = 1;
 static size_t prefix;
+static struct nav *nav;
 static struct ui *ui;
 
 #define PREFIX_MULT(i)	(prefix > 0 ? prefix * (i) : (size_t)(i))
@@ -53,34 +49,21 @@ static struct ui *ui;
 
 struct numratios { char check[LENGTH(column_ratios) < MIN_COLS ? -1 : 1]; };
 
-static struct dir *dirs[MAX(LENGTH(column_ratios), MIN_COLS + 1)];
-#define dir_prev	(dirs[LENGTH(dirs) - 3])
-#define dir_main	(dirs[LENGTH(dirs) - 2])
-#define dir_preview	(dirs[LENGTH(dirs) - 1])
-
-void
-dir_set_curline(int *cl, size_t cf)
-{
-	*cl = MIN(cf, (size_t)ui->win->h);
-}
-
 void
 move_v(union arg *arg)
 {
-	size_t scf = dir_main->cf;
 
-	if (arg->i > 0)
-		FILE_DOWN(dir_main, PREFIX_MULT(arg->i));
-	else
-		FILE_UP(dir_main, PREFIX_MULT(- arg->i));
+	size_t step;
 
-	if (dir_main->cf != scf) {
-		dir_main->cl += dir_main->cf - scf;
-		if (dir_main->cl > ui->win->h)
-			dir_main->cl = ui->win->h;
-		else if (dir_main->cl < 0)
-			dir_main->cl = 0;
-		dir_preview = dir_child(dir_main);
+	if (arg->i > 0) {
+		step = nav_move_down(nav, PREFIX_MULT(arg->i));
+		ui_line_down(ui, step);
+	} else {
+		step = nav_move_up(nav, PREFIX_MULT(-(arg->i)));
+		ui_line_up(ui, step);
+	}
+
+	if (step != 0) {
 		ui_redraw(ui);
 	}
 }
@@ -88,27 +71,17 @@ move_v(union arg *arg)
 void
 move_h(union arg *arg)
 {
-	struct dir *sd = dir_main;
-	size_t i;
+	size_t step;
 
 	if (arg->i > 0) {
-		for (prefix = PREFIX_MULT(arg->i); dir_preview != NULL
-		     && !DIR_IS_FAIL(dir_preview) && prefix > 0; --prefix) {
-			for (i = 0; i < LENGTH(dirs) - 1; ++i)
-				dirs[i] = dirs[i + 1];
-			dir_preview = dir_child(dir_main);
-		}
+		step = nav_move_forw(nav, PREFIX_MULT(arg->i));
 	} else {
-		for (prefix = PREFIX_MULT(- arg->i); dir_prev != NULL
-		     && prefix > 0; --prefix) {
-			for (i = LENGTH(dirs) - 1; i > 0; --i)
-				dirs[i] = dirs[i - 1];
-			dirs[0] = dir_parent(dirs[1]);
-		}
+		step = nav_move_back(nav, PREFIX_MULT(-(arg->i)));
 	}
 
-	if (dir_main != sd)
+	if (step != 0) {
 		ui_redraw(ui);
+	}
 }
 
 void
@@ -123,16 +96,7 @@ move_page(union arg *arg)
 void
 goto_dir(union arg *arg)
 {
-	struct dir *dir;
-	size_t i;
-
-	if ((dir = dir_get(arg->v)) == NULL)
-		return;
-
-	dir_main = dir;
-	dir_preview  = dir_child(dir_main);
-	for  (i = LENGTH(dirs) - 2; i-- != 0; )
-		dirs[i] = dir_parent(dirs[i + 1]);
+	nav_goto_dir(nav, (const char *)arg->v);
 
 	ui_redraw(ui);
 }
@@ -140,70 +104,54 @@ goto_dir(union arg *arg)
 void
 goto_line(union arg *arg)
 {
-	prefix += arg->u;
-	if (prefix < dir_main->size)
-		dir_main->cf = prefix;
-	else
-		dir_main->cf = dir_main->size - 1;
-	dir_set_curline(&dir_main->cl, dir_main->cf);
-	ui_redraw(ui);
+	size_t line;
+	union arg a;
+
+	line = prefix + arg->u;
+	if (line < prefix) {
+		line = SIZE_MAX;
+	}
+
+	if (line > (*nav->main)->cf) {
+		a.i = 1;
+		prefix = line - (*nav->main)->cf;
+	} else {
+		a.i = -1;
+		prefix = (*nav->main)->cf - line;
+	}
+	move_v(&a);
 }
 
 void
 sortby(union arg *arg)
 {
-	size_t i;
-
-	nav_set_sort(arg->u);
-	for (i = 0; i < LENGTH(dirs); ++i)
-		if (dirs[i] != NULL)
-			dir_resort(dirs[i]);
-	ui_redraw(ui);
+	if (nav_flag_edit(nav, ENABLE, arg->u)) {
+		ui_redraw(ui);
+	}
 }
 
 void
 show_hid(union arg *arg)
 {
-	size_t i;
-
-	if (arg->i < 0)
-		nav_toggle_showhid();
-	else
-		nav_set_showhid(arg->i);
-	for (i = 0; i < LENGTH(dirs); ++i)
-		if (dirs[i] != NULL)
-			dir_refilter(dirs[i]);
-	ui_redraw(ui);
+	if (nav_flag_edit(nav, arg->i, NAV_SHOW_HIDDEN)) {
+		ui_redraw(ui);
+	}
 }
 
 void
 sort_caseins(union arg *arg)
 {
-	size_t i;
-
-	if (arg->i < 0)
-		nav_toggle_caseins();
-	else
-		nav_set_caseins(arg->i);
-	for (i = 0; i < LENGTH(dirs); ++i)
-		if (dirs[i] != NULL)
-			dir_resort(dirs[i]);
-	ui_redraw(ui);
+	if (nav_flag_edit(nav, arg->i, NAV_SORT_CASEINS)) {
+		ui_redraw(ui);
+	}
 }
 
 void
 sort_dirfirst(union arg *arg)
 {
-	size_t i;
-
-	if (arg->i < 0)
-		nav_toggle_dirfirst();
-	else
-		nav_set_dirfirst(arg->i);
-	for (i = 0; i < LENGTH(dirs); ++i)
-		if (dirs[i] != NULL)
-			dir_resort(dirs[i]);
-	ui_redraw(ui);
+	if (nav_flag_edit(nav, arg->i, NAV_SORT_DIRFIRST)) {
+		ui_redraw(ui);
+	}
 }
 
 void
@@ -241,10 +189,11 @@ on_keypress(unsigned int code)
 	ci++;
 	pkeys[j] = NULL;
 
-	if (j == 1 && (*pkeys)->codes[ci] == '\0')
+	if (j == 1 && (*pkeys)->codes[ci] == '\0') {
 		goto callf;
-	else if (j == 0)
+	} else if (j == 0) {
 		goto reset;
+	}
 
 	/* TODO: print avalible keys */
 	return;
@@ -262,15 +211,18 @@ winch_handler(int sig)
 void
 setup(void)
 {
+	char *cwd;
+
 	/* init fs */
-	nav_init();
-	nav_set_sort(sort);
-	nav_set_caseins(sort_case_insensitive);
-	nav_set_dirfirst(sort_directories_first);
-	nav_set_showhid(show_hidden);
+	cwd = getcwd(buffer, PATH_MAX);
+
+	nav = nav_create(cwd, LENGTH(column_ratios), sort |
+			 (sort_case_insensitive ? NAV_SORT_CASEINS : 0) |
+			 (sort_directories_first ? NAV_SORT_DIRFIRST : 0) |
+			 (show_hidden ? NAV_SHOW_HIDDEN : 0));
 
 	/* init ui */
-	ui = ui_create((unsigned int *)column_ratios, dirs, LENGTH(column_ratios), &scheme);
+	ui = ui_create(nav, column_ratios, LENGTH(column_ratios), &scheme);
 
 	pipe(winch_fds);
 	signal(SIGWINCH, winch_handler);
@@ -279,13 +231,11 @@ setup(void)
 void
 run(void)
 {
-	union arg arg;
 	fd_set fdset;
 	unsigned int *key;
 	int winch_sig;
 
-	arg.v = getcwd(buffer, PATH_MAX);
-	goto_dir(&arg);
+	ui_redraw(ui);
 
 	while(runner) {
 		FD_ZERO(&fdset);
@@ -309,8 +259,8 @@ run(void)
 void
 cleanup(void)
 {
-	nav_clean();
 	ui_free(ui);
+	nav_free(nav);
 }
 
 int

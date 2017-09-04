@@ -1,13 +1,14 @@
 #ifndef SFM_UI_H
 #define SFM_UI_H
 
+#include <stddef.h>
+
 struct window {
 	int xmin;
 	int xmax;
 	int y;
 	int h;
 	unsigned int ratio;
-	struct dir **dir;
 };
 
 struct color {
@@ -20,6 +21,7 @@ struct colorscheme {
 };
 
 struct ui {
+	struct nav *nav;
 	struct colorscheme clrscheme;
 	struct window *win;
 	unsigned int num_wins;
@@ -33,10 +35,15 @@ enum { COLOR_BLACK, COLOR_RED, COLOR_GREEN, COLOR_YELLOW,
 
 enum { ATTR_BOLD = 0x0100 };
 
-struct ui * ui_create(unsigned int *, struct dir **, unsigned int, struct colorscheme *);
+struct ui * ui_create(struct nav *,
+		      const unsigned int *,
+		      unsigned int,
+		      struct colorscheme *);
 void ui_free(struct ui *);
 void ui_redraw(struct ui *);
 unsigned int * ui_getch(struct ui *);
 void ui_on_resize(struct ui *);
+void ui_line_up(struct ui *, size_t);
+void ui_line_down(struct ui *, size_t);
 
 #endif /* SFM_UI_H */

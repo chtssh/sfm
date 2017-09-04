@@ -1,6 +1,6 @@
 static const unsigned column_ratios[] = { 2, 3, 3 };
 
-static const unsigned sort = SORTBY_NAME;
+static const unsigned sort = NAV_SORTBY_NAME;
 static const unsigned sort_case_insensitive = 1;
 static const unsigned sort_directories_first = 1;
 
@@ -41,8 +41,8 @@ static struct key keys[] = {
 	{ "gs",		goto_dir,	{.v = "/srv" } },
 	{ "gu",		goto_dir,	{.v = "/usr" } },
 	{ "gv",		goto_dir,	{.v = "/var" } },
-	{ "ob",		sortby,		{.u = SORTBY_NAME } },
-	{ "os",		sortby,		{.u = SORTBY_SIZE } },
+	{ "ob",		sortby,		{.u = NAV_SORTBY_NAME } },
+	{ "os",		sortby,		{.u = NAV_SORTBY_SIZE } },
 	{ "zs",		sort_caseins,	{.i = TOGGLE } },
 	{ "zd",		sort_dirfirst,	{.i = TOGGLE } },
 	{ "\x08",	show_hid,	{.i = TOGGLE } },
